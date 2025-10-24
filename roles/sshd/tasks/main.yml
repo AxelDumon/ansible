@@ -1,0 +1,29 @@
+---
+- name: Detect the operating system
+  ansible.builtin.set_fact:
+    os_family: "{{ ansible_facts['os_family'] }}"
+    os_distribution: "{{ ansible_facts['distribution'] }}"
+    os_version: "{{ ansible_facts['distribution_version'] }}"
+
+- name: Include OS-specific variables
+  ansible.builtin.include_vars:
+    file: "{{ item }}"
+  with_first_found:
+    - "{{ os_family | lower }}.yml"
+    - default.yml
+
+- name: Ensure SSH key exists for the user
+  ansible.builtin.user:
+    name: "{{ sshd_user }}"
+    generate_ssh_key: true
+    ssh_key_bits: 2048
+    ssh_key_comment: "{{ sshd_user }}@{{ ansible_facts['hostname'] }}"
+  when: os_family != "Windows"
+
+- name: Configure SSH for Linux
+  ansible.builtin.include_tasks: linux.yml
+  when: os_family != "Windows"
+
+- name: Configure SSH for Windows
+  ansible.builtin.include_tasks: windows.yml
+  when: os_family == "Windows"

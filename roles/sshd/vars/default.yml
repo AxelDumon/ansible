@@ -1,0 +1,4 @@
+---
+sshd_service: "{{ lookup('env', 'SSHD_SERVICE') | default('sshd', true) }}"
+sshd_user: "{{ lookup('env', 'USER') | default('root', true) }}"
+sshd_port: 22

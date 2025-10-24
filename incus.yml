@@ -1,0 +1,27 @@
+---
+plugin: kmpm.incus.incus
+groupby:
+  windows:
+    type: os
+    attribute: Windows
+  redhat:
+    type: os
+    attribute: RedHat
+  centos:
+    type: os
+    attribute: CentOS
+  fedora:
+    type: os
+    attribute: Fedora
+  ubuntu:
+    type: os
+    attribute: Ubuntu
+  debian:
+    type: os
+    attribute: Debian
+  almalinux:
+    type: os
+    attribute: 'Almalinux'
+  servers:
+    type: pattern
+    attribute: '^server'

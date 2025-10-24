@@ -1,0 +1,6 @@
+---
+- name: Fetch CouchDB's app version on git
+  ansible.builtin.get_url:
+    url: "{{ couchdb_app_repo_url }}"
+    dest: /tmp/couchdb_app_version.txt
+    mode: '0644'

@@ -1,0 +1,7 @@
+---
+- name: Test SSHD role
+  hosts: all
+  become: true
+
+  roles:
+    - sshd
