@@ -1,0 +1,14 @@
+---
+- name: Fetch and deploy global front application
+  hosts: watching_agents
+  gather_facts: false
+  become: true
+  tasks:
+
+    - name: Copy cloned global front to remote
+      ansible.builtin.copy:
+        src: /tmp/ExplorationToyProblem-GlobalFront/
+        dest: /app/global
+        owner: root
+        group: root
+        mode: '0755'

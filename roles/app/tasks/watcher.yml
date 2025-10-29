@@ -1,0 +1,78 @@
+---
+- name: Copy vite built front to target location
+  tags: app, build, deploy
+  ansible.builtin.copy:
+    src: /tmp/ExplorationToyProblem-GlobalFront/build/
+    dest: /app/global/build
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    force: true
+    mode: '0755'
+
+- name: Copy express built back to target location
+  tags: app, build, deploy
+  ansible.builtin.copy:
+    src: /tmp/ExplorationToyProblem-GlobalFront/dest/
+    dest: /app/global/dest
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    force: true
+    mode: '0755'
+
+- name: Copy package-lock.json to target location
+  tags: app, build, deploy
+  ansible.builtin.copy:
+    src: /tmp/ExplorationToyProblem-GlobalFront/package-lock.json
+    dest: /app/global/package-lock.json
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    force: true
+    mode: '0644'
+
+- name: Copy package.json to target location
+  tags: app, build, deploy
+  ansible.builtin.copy:
+    src: /tmp/ExplorationToyProblem-GlobalFront/package.json
+    dest: /app/global/package.json
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    force: true
+    mode: '0644'
+
+- name: Ensure nodejs and npm are installed
+  ansible.builtin.package:
+    name:
+      - nodejs
+      - npm
+    state: present
+
+- name: Ensure vite is installed globally
+  community.general.npm:
+    name: vite
+    global: true
+    state: present
+
+- name: Create service file for watching agent
+  tags: app, build, deploy, systemd
+  ansible.builtin.template:
+    src: watching-agent.service.j2
+    dest: /etc/systemd/system/watching-agent.service
+    mode: '0644'
+    owner: root
+    group: root
+  register: app_watching_service_conf
+  notify: ReloadSystemd
+
+- name: Install dependencies from lockfile
+  tags: app, build, deploy
+  community.general.npm:
+    ci: true
+    path: /app/global
+    state: present
+
+- name: Start watching-agent service
+  tags: app, build, deploy
+  ansible.builtin.service:
+    name: watching-agent
+    enabled: true
+    state: started

@@ -1,0 +1,15 @@
+[Unit]
+Description=Watching Agent Application
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/npm start --prefix {{ app_target_src_dir | default('/app/global') }}
+WorkingDirectory={{ working_dir | default('/app') }}
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+{# User={{ service_user | default('root') }} #}
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

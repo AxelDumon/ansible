@@ -1,0 +1,21 @@
+---
+- name: Fetch and deploy Explorer Toy Problem application
+  hosts: exploring_agents
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Copy cloned backend to remote
+      ansible.builtin.copy:
+        src: /tmp/ExplorationToyProblem-Backend/
+        dest: /app/server
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Copy cloned local front to remote
+      ansible.builtin.copy:
+        src: /tmp/ExplorationToyProblem-LocalFront/
+        dest: /app/public
+        owner: root
+        group: root
+        mode: '0755'

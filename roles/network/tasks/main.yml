@@ -1,3 +1,21 @@
-#SPDX-License-Identifier: MIT-0
 ---
-# tasks file for roles/network
+- name: Display OS family
+  ansible.builtin.debug:
+    var: ansible_network_os_family
+
+- name: Display distribution
+  ansible.builtin.debug:
+    var: ansible_distribution
+
+- name: Display system
+  ansible.builtin.debug:
+    var: ansible_system
+
+# - name: Get running configuration
+#   ansible.netcommon.cli_command:
+#     command: show running-config
+#   register: network_config
+
+# - name: Display the running configuration
+#   ansible.builtin.debug:
+#     var: network_config.stdout

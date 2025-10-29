@@ -1,3 +1,25 @@
-#SPDX-License-Identifier: MIT-0
 ---
-# tasks file for roles/db
+- name: Gather OS facts
+  ansible.builtin.set_fact:
+    os_family: "{{ ansible_facts['os_family'] }}"
+    os_distribution: "{{ ansible_facts['distribution'] }}"
+    os_version: "{{ ansible_facts['distribution_version'] }}"
+
+- name: Display gathered OS facts
+  ansible.builtin.debug:
+    msg:
+      - "OS Family: {{ os_family }}"
+      - "Distribution: {{ os_distribution }}"
+      - "Version: {{ os_version }}"
+
+- name: Select the database to install
+  ansible.builtin.set_fact:
+    db_name: "{{ db_name | default('mongodb') }}"
+
+- name: Include MongoDB installation tasks
+  ansible.builtin.include_tasks: mongodb.yml
+  when: db_name == 'mongodb'
+
+- name: Include CouchDB installation tasks
+  ansible.builtin.include_tasks: couchdb.yml
+  when: db_name == 'couchdb'

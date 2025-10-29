@@ -1,6 +1,12 @@
 ---
 plugin: kmpm.incus.incus
 groupby:
+  # exploring_agents:
+  #   type: pattern
+  #   attribute: '^exploring-agent'
+  # watching_agents:
+  #   type: pattern
+  #   attribute: '^watching-agent'
   windows:
     type: os
     attribute: Windows
@@ -22,6 +28,3 @@ groupby:
   almalinux:
     type: os
     attribute: 'Almalinux'
-  servers:
-    type: pattern
-    attribute: '^server'

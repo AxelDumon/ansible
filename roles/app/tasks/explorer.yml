@@ -1,0 +1,101 @@
+---
+- name: Copy built local front to target location
+  tags: app, build, deploy, frontend
+  ansible.builtin.copy:
+    src: /tmp/ExplorationToyProblem-LocalFront/build/
+    dest: /app/public/build
+    mode: '0755'
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    force: true
+
+- name: Copy front package-lock.json to target location
+  tags: app, build, deploy
+  ansible.builtin.copy:
+    src: /tmp/ExplorationToyProblem-LocalFront/package-lock.json
+    dest: /app/public/package-lock.json
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    force: true
+    mode: '0644'
+
+- name: Copy front package.json to target location
+  tags: app, build, deploy
+  ansible.builtin.copy:
+    src: /tmp/ExplorationToyProblem-LocalFront/package.json
+    dest: /app/public/package.json
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    force: true
+    mode: '0644'
+
+- name: Copy built app to target location
+  tags: app, build, deploy
+  ansible.builtin.copy:
+    src: /tmp/ExplorationToyProblem-Backend/build/
+    dest: /app/server/build
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    force: true
+    mode: '0755'
+
+- name: Copy back package-lock.json to target location
+  tags: app, build, deploy
+  ansible.builtin.copy:
+    src: /tmp/ExplorationToyProblem-Backend/package-lock.json
+    dest: /app/server/package-lock.json
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    force: true
+    mode: '0644'
+
+- name: Copy back package.json to target location
+  tags: app, build, deploy
+  ansible.builtin.copy:
+    src: /tmp/ExplorationToyProblem-Backend/package.json
+    dest: /app/server/package.json
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    force: true
+    mode: '0644'
+
+- name: Ensure nodejs and npm are installed
+  ansible.builtin.package:
+    name:
+      - nodejs
+      - npm
+    state: latest
+
+- name: Ensure dependencies are installed globally
+  community.general.npm:
+    name: {{ item }}
+    global: true
+    state: present
+  loop:
+    - concurrently
+    - vite
+
+- name: Create service file for exploring agent
+  tags: app, build, deploy, systemd
+  ansible.builtin.template:
+    src: exploring-agent.service.j2
+    dest: /etc/systemd/system/exploring-agent.service
+    mode: '0644'
+    owner: root
+    group: root
+  register: app_exploring_service_conf
+  notify: ReloadSystemd
+
+- name: Install dependencies from lockfile
+  tags: app, build, deploy
+  community.general.npm:
+    ci: true
+    path: /app/server
+    state: present
+
+- name: Start exploring-agent service
+  tags: app, build, deploy
+  ansible.builtin.service:
+    name: exploring-agent
+    enabled: true
+    state: started

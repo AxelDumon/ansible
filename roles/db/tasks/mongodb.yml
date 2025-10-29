@@ -1,0 +1,28 @@
+---
+- name: Install prerequisites for MongoDB
+  become: true
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: true
+  loop:
+    - gnupg
+    - curl
+
+- name: Add mongo ppa key
+  ansible.builtin.apt_key:
+    url: https://www.mongodb.org/static/pgp/server-8.0.asc
+    state: present
+
+- name: Add Mongo sources list
+  ansible.builtin.apt_repository:
+    repo: deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/{{ ansible_distribution | lower }} {{ ansible_distribution_release }}/mongodb-org/8.0 multiverse
+    state: present
+    filename: mongodb-org-8.0
+
+- name: Install MongoDB
+  ansible.builtin.apt:
+    name: mongodb-org
+    state: present
+    update_cache: true
+  notify: Start MongoDB

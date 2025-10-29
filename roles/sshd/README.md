@@ -1,38 +1,106 @@
-Role Name
-=========
+# sshd
 
-A brief description of the role goes here.
+[![Ansible 
+version](https://img.shields.io/badge/ansible-%3E%3D2.10-black.svg?style=flat-square&logo=an
+sible)](https://github.com/ansible/ansible)
 
-Requirements
-------------
+⭐ Star us on GitHub — it motivates us a lot!
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+your role description
 
-Role Variables
---------------
+**Platforms Supported**:
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+None.
 
-Dependencies
-------------
+## ⚠️ Requirements
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+Ansible >= 2.1.
 
-Example Playbook
-----------------
+### Ansible role dependencies
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+None.
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+## ⚡ Installation
 
-License
--------
+### Install with Ansible Galaxy
 
-BSD
+```shell
+ansible-galaxy install sshd
+```
 
-Author Information
-------------------
+### Install with git
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+If you do not want a global installation, clone it into your `roles_path`.
+
+```bash
+git clone   sshd
+```
+
+But I often add it as a submodule in a given `playbook_dir` repository.
+
+```bash
+git submodule add  roles/sshd
+```
+
+As the role is not managed by Ansible Galaxy, you do not have to specify the
+github user account.
+
+### ✏️ Example Playbook
+
+Basic usage is:
+
+```yaml
+- hosts: all
+  roles:
+    - role: sshd
+```
+
+## ⚙️ Role Variables
+
+Variables are divided in three types.
+
+The **default vars** section shows you which variables you may
+override in your ansible inventory. As a matter of fact, all variables should
+be defined there for explicitness, ease of documentation as well as overall
+role manageability.
+
+The **context variables** are shown in section below hint you
+on how runtime context may affects role execution.
+
+### Default variables
+Role default variables from `defaults/main.yml`.
+
+
+### Context variables
+
+Those variables from `vars/*.{yml,json}` are loaded dynamically during task
+runtime using the `include_vars` module.
+
+Variables loaded from `vars/almalinux.yml`.
+
+| Variable Name | Value |
+|---------------|-------|
+| sshd_service | sshd |
+
+Variables loaded from `vars/default.yml`.
+
+| Variable Name | Value |
+|---------------|-------|
+| sshd_service | {{ lookup('env', 'SSHD_SERVICE')  \| default('sshd', true) }} |
+| sshd_user | {{ lookup('env', 'USER')  \| default('root', true) }} |
+| sshd_port | 22 |
+
+Variables loaded from `vars/debian.yml`.
+
+| Variable Name | Value |
+|---------------|-------|
+| sshd_service | ssh |
+| sshd_user | {{ lookup('env', 'USER')  \| default('root', true) }} |
+
+
+
+## Author Information
+
+your company (optional)
+Role 'sshd' ...done
+

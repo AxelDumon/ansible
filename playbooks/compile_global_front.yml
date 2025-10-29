@@ -1,0 +1,18 @@
+---
+- name: Compile global front TypeScript code
+  hosts: watching_agents
+  become: true
+  tasks:
+    - name: Compile global front TypeScript files
+      community.general.npm:
+        path: /app/global
+        
+    - name: Compile global front TypeScript files
+      ansible.builtin.command:
+        cmd: npm install && npm run build
+        chdir: /app/global
+        creates: /app/global/build
+
+    - name: Display frontend compilation result
+      ansible.builtin.debug:
+        var: compile_frontend_result.stdout_lines

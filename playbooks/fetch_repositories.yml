@@ -1,0 +1,31 @@
+---
+- name: Fetch repositories
+  hosts: localhost
+  tasks:
+    - name: Install Git if not present (Debian/Ubuntu)
+      ansible.builtin.package:
+        name: git
+        state: present
+
+    - name: Clone or update global front repository
+      ansible.builtin.git:
+        repo: 'https://github.com/AxelDumon/ExplorationToyProblem-GlobalFront.git'
+        dest: /tmp/ExplorationToyProblem-GlobalFront
+        version: master
+        update: true
+
+    - name: Clone or update local front repository
+      ansible.builtin.git:
+        repo: 'https://github.com/AxelDumon/ExplorationToyProblem-LocalFront.git'
+        dest: /tmp/ExplorationToyProblem-LocalFront
+        version: master
+        update: true
+
+    - name: Clone or update backend repository
+      ansible.builtin.git:
+        repo: 'https://github.com/AxelDumon/ExplorationToyProblem-Backend.git'
+        dest: /tmp/ExplorationToyProblem-Backend
+        # Change version to change DB
+        # Possible versions : mongodb, couchdb, master
+        version: master
+        update: true
