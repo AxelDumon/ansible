@@ -1,3 +1,16 @@
-#SPDX-License-Identifier: MIT-0
 ---
-# handlers file for roles/network
+- name: Restart dnsmasq
+  ansible.builtin.systemd:
+    name: dnsmasq
+    state: restarted
+
+- name: Restart NetworkManager
+  ansible.builtin.systemd:
+    name: NetworkManager
+    state: restarted
+
+- name: Restart systemd-resolved
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: restarted
+  listen: restart_systemd_resolved

@@ -1,21 +1,11 @@
 ---
-- name: Configure static IP address
-  ansible.builtin.command:
-    cmd: ip addr add 192.168.1.100/24 dev eth0
-  failed_when: "'File exists' not in network_result.stderr"  # Fail only if the error is not about the IP already existing
-  changed_when: false  # Ensure idempotence by marking the task as unchanged if the IP already exists
-  register: network_result
-
-- name: Configure default gateway
-  ansible.builtin.command:
-    cmd: ip route add default via 192.168.1.1
-  failed_when: "'File exists' not in network_result.stderr"  # Fail only if the error is not about the route already existing
-  changed_when: false  # Ensure idempotence by marking the task as unchanged if the route already exists
-  register: network_result
-
-- name: Ensure firewall allows communication
-  ansible.builtin.command:
-    cmd: iptables -A INPUT -p tcp --dport 8000 -j ACCEPT
-  failed_when: "'exists' not in network_result.stderr"  # Fail only if the error is not about the rule already existing
-  changed_when: false  # Ensure idempotence by marking the task as unchanged if the rule already exists
-  register: network_result
+- name: Add entries to /etc/hosts for local DNS resolution dynamically
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ item }}"
+    state: present
+    create: true
+    mode: '0644'
+  loop: "{{ lookup('template', 'hosts.j2').splitlines() }}"
+  become: true
+  notify: restart_systemd_resolved

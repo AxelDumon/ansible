@@ -21,8 +21,22 @@ for file in facts/*; do jq . "$file" > "${file}.pretty" && mv "${file}.pretty" "
 Il faut dans un premier temps configurer le serveur ssh de chaque machine pour pouvoir s'y connecter.
 
 ```
-ansible-playbook playbook.yml
+ansible-playbook config_ssh.yml
 ```
+
+Une fois que c'est fait on peut préparer le réseau
+
+```
+ansible-playbook network_test.yml
+```
+
+Désormais la bdd choisi
+(On peut modifier le choix de base dans les paramètres de lancement)
+```
+ansible-playbook bdd_test.yml --ask-become-pass
+```
+
+
 
 Ensuite il faut préparrer l'application en local (compilation, clonnage etc)
 

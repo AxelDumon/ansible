@@ -12,8 +12,8 @@
 - name: Copy express built back to target location
   tags: app, build, deploy
   ansible.builtin.copy:
-    src: /tmp/ExplorationToyProblem-GlobalFront/dest/
-    dest: /app/global/dest
+    src: /tmp/ExplorationToyProblem-GlobalFront/dist/
+    dest: /app/global/dist/
     owner: "{{ user }}"
     group: "{{ group }}"
     force: true
@@ -39,12 +39,23 @@
     force: true
     mode: '0644'
 
+- name: Create the .env file
+  tags: app, build, deploy, env
+  ansible.builtin.template:
+    src: watcher-env.j2
+    dest: /app/{{item}}/.env
+    mode: '0644'
+    owner: "{{ user }}"
+    group: "{{ group }}"
+  loop:
+    - global
+
 - name: Ensure nodejs and npm are installed
   ansible.builtin.package:
     name:
       - nodejs
       - npm
-    state: present
+    state: latest
 
 - name: Ensure vite is installed globally
   community.general.npm:
@@ -60,7 +71,6 @@
     mode: '0644'
     owner: root
     group: root
-  register: app_watching_service_conf
   notify: ReloadSystemd
 
 - name: Install dependencies from lockfile

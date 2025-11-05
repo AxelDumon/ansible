@@ -1,6 +1,33 @@
-#SPDX-License-Identifier: MIT-0
+# ---
+# - hosts: localhost
+#   remote_user: root
+#   roles:
+#     - roles/network
 ---
-- hosts: localhost
-  remote_user: root
+- name: Test network role
+  hosts: explorer
+  gather_facts: false
   roles:
     - roles/network
+  tasks:
+    - name: Test connectivity using IP addresses
+      ansible.builtin.ping:
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['explorer'] }}"
+      when: inventory_hostname != item
+      register: ip_ping_results
+
+    - name: Display IP ping results
+      ansible.builtin.debug:
+        var: ip_ping_results
+
+    - name: Test connectivity using hostnames
+      ansible.builtin.ping:
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['explorer'] }}"
+      when: inventory_hostname != item
+      register: hostname_ping_results
+
+    - name: Display hostname ping results
+      ansible.builtin.debug:
+        var: hostname_ping_results

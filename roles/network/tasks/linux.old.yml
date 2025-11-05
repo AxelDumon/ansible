@@ -1,0 +1,125 @@
+---
+- name: Configure DNS for local name resolution
+  block:
+    - name: Ensure there are no conflict with port 53
+      ansible.builtin.command:
+        cmd: lsof -i :53
+      register: port_53_check
+      changed_when: false
+      failed_when: port_53_check.rc == 0
+
+    - name: Ensure systemd-resolved is installed and running
+      block:
+        - name: Install systemd-resolved
+          ansible.builtin.package:
+            name: systemd-resolved
+            state: present
+
+        - name: Enable and start systemd-resolved
+          ansible.builtin.systemd:
+            name: systemd-resolved
+            state: started
+            enabled: true
+      when: ansible_distribution == "Debian"
+
+    - name: Ensure /etc/resolv.conf points to 127.0.0.1
+      block:
+        - name: Remove existing /etc/resolv.conf if it is a symlink
+          ansible.builtin.file:
+            path: /etc/resolv.conf
+            state: absent
+            force: true
+          when: ansible_distribution == "Debian" and ansible_file_mode['/etc/resolv.conf'].islnk
+
+        - name: Create a static /etc/resolv.conf pointing to 127.0.0.1
+          ansible.builtin.copy:
+            content: |
+              nameserver 127.0.0.1
+            dest: /etc/resolv.conf
+            owner: root
+            group: root
+            mode: '0644'
+
+    - name: Install dnsmasq
+      ansible.builtin.package:
+        name: dnsmasq
+        state: present
+
+    - name: Create dnsmasq configuration directory
+      ansible.builtin.file:
+        path: /etc/dnsmasq.d
+        state: directory
+        mode: '0755'
+
+    - name: Configure dnsmasq for local DNS
+      ansible.builtin.template:
+        src: dnsmasq_hosts.j2
+        dest: /etc/dnsmasq.d/hosts.conf
+        mode: '0644'
+
+    - name: Ensure dnsmasq includes /etc/dnsmasq.d
+      ansible.builtin.lineinfile:
+        path: /etc/dnsmasq.conf
+        regexp: '^\#conf\-dir\='
+        line: "conf-dir=/etc/dnsmasq.d"
+        state: present
+      notify: Restart dnsmasq
+
+    - name: Debug dnsmasq_hosts.j2 template output
+      ansible.builtin.template:
+        src: dnsmasq_hosts.j2
+        dest: /tmp/debug_hosts.conf
+      delegate_to: localhost
+
+    - name: Display rendered dnsmasq_hosts.j2 content
+      ansible.builtin.debug:
+        msg: "{{ lookup('file', '/tmp/debug_hosts.conf') }}"
+      delegate_to: localhost
+
+    - name: Update resolv.conf to use local DNS server
+      ansible.builtin.lineinfile:
+        path: /etc/resolv.conf
+        line: "nameserver 127.0.0.1"
+        state: present
+        create: true
+      
+    # - name: Make resolv.conf immutable
+    #   ansible.builtin.command:
+    #     cmd: chattr +i /etc/resolv.conf
+    #   become: true
+
+    - name: Configure NetworkManager
+      block:
+        - name: Check if NetworkManager is installed
+          ansible.builtin.command:
+            cmd: nmcli --version
+          register: nmcli_check
+          changed_when: false
+          failed_when: false
+
+        - name: Configure NetworkManager to use dnsmasq
+          ansible.builtin.lineinfile:
+            path: /etc/NetworkManager/NetworkManager.conf
+            line: "dns=dnsmasq"
+            state: present
+          become: true
+          notify: Restart NetworkManager
+          when: nmcli_check.rc == 0
+      rescue:
+        - name: NetworkManager not found, skipping configuration
+          ansible.builtin.debug:
+            msg: "NetworkManager configuration skipped as it is not present."
+
+# - name: Add host entries
+#   ansible.builtin.set_fact:
+#     host_entries: |
+#       {% for host in groups['explorer'] %}
+#       {{ hostvars[host]['ansible_host'] }} agent{{ '%03d' | format(loop.index) }}
+#       {% endfor %}
+# - name: Update /etc/hosts file
+#   ansible.builtin.lineinfile:
+#     path: /etc/hosts
+#     line: "{{ item }}"
+#     state: present
+#   loop: "{{ host_entries.splitlines() }}"
+#   when: item != ''

@@ -1,0 +1,6 @@
+{% for host in groups['exploringAgents'] | default([]) %}
+{{ hostvars[host]['ansible_default_ipv4']['address'] }} agent{{ '%03d' | format(loop.index) }}
+{% endfor %}
+{% for host in groups['watchingAgents'] | default([]) %}
+{{ hostvars[host]['ansible_default_ipv4']['address'] }} watcher{{ '%03d' | format(loop.index) }}
+{% endfor %}

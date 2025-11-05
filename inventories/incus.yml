@@ -1,5 +1,5 @@
----
 plugin: kmpm.incus.incus
+status_filter: running
 groupby:
   exploringAgents:
     type: pattern

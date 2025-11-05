@@ -1,14 +1,6 @@
 ---
-- name: Reload systemd daemon when exploring service configuration changes
+- name: Reload systemd daemon when service configuration changes
   tags: app, service, systemd
   ansible.builtin.systemd:
     daemon_reload: true
-  when: app_exploring_service_conf.changed
-  listen: ReloadSystemd
-
-- name: Reload systemd daemon when watching service configuration changes
-  tags: app, service, systemd
-  ansible.builtin.systemd:
-    daemon_reload: true
-  when: app_watching_service_conf.changed
   listen: ReloadSystemd

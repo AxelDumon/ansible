@@ -1,9 +1,23 @@
-- name: Detect the wanted module
+# - name: Detect the wanted module
+#   ansible.builtin.set_fact:
+#     # app_os_family: "{{ ansible_facts['os_family'] }}"
+#     # app_os_distribution: "{{ ansible_facts['distribution'] }}"
+#     # app_os_version: "{{ ansible_facts['distribution_version'] }}"
+#     app_modules: "{{ app_modules | default({'explorer': true, 'watcher': false}) }}"
+
+- name: Debug temp
+  ansible.builtin.debug:
+    var: groups['exploringAgents'] | regex_search(ansible_hostname) is not none
+
+- name: Set application modules to deploy
   ansible.builtin.set_fact:
-    # app_os_family: "{{ ansible_facts['os_family'] }}"
-    # app_os_distribution: "{{ ansible_facts['distribution'] }}"
-    # app_os_version: "{{ ansible_facts['distribution_version'] }}"
-    app_modules: "{{ app_modules | default({'explorer': true, 'watcher': false}) }}"
+    app_modules:
+      explorer: "{{ groups['exploringAgents'] | regex_search(ansible_hostname) is not none }}"
+      watcher: "{{ groups['watchingAgents'] | regex_search(ansible_hostname) is not none }}"
+
+- name: Debug detected modules
+  ansible.builtin.debug:
+    var: app_modules
 
 - name: Include module variables
   ansible.builtin.include_vars:
@@ -13,6 +27,86 @@
 - name: Test variables loaded
   ansible.builtin.debug:
     var: app_modules
+
+# - name: Include application env variables
+#   ansible.builtin.include_vars:
+#     file: "../defaults/main.yml"
+
+- name: Get /etc/hosts content to find agent's name
+  ansible.builtin.slurp:
+    src: /etc/hosts
+  register: hosts_file_result
+
+- name: Set hosts_file as fact
+  ansible.builtin.set_fact:
+    hosts_file: "{{ hosts_file_result.content | b64decode }}"
+
+- name: debug hosts_file
+  ansible.builtin.debug:
+    var: hosts_file
+
+- name: Debug default_ipv4 address
+  ansible.builtin.debug:
+    msg: "Default IPv4 address is {{ ansible_default_ipv4.address }}"
+
+- name: Set app_agent_name based on /etc/hosts content
+  ansible.builtin.set_fact:
+    app_agent_name: "{{ hosts_file | split('\n') | select('search', ansible_default_ipv4.address) | first | regex_search('agent[0-9]{3}') | default('') }}"
+  when: app_modules.explorer | default(false)
+  failed_when: app_agent_name == ''
+
+- name: Debug app_agent_name fact
+  ansible.builtin.debug:
+    var: app_agent_name
+  when: app_modules.explorer | default(false)
+
+- name: Set app_watcher_name based on /etc/hosts content
+  ansible.builtin.set_fact:
+    app_watcher_name: "{{ hosts_file | split('\n') | select('search', ansible_default_ipv4.address) | first | regex_search('watcher[0-9]{3}') | default('') }}"
+  when: app_modules.watcher | default(false)
+  failed_when: app_watcher_name == ''
+
+- name: Debug app_watcher_name fact
+  ansible.builtin.debug:
+    var: app_watcher_name
+  when: app_modules.watcher | default(false)
+
+- name: Set app_explorers_names fact
+  ansible.builtin.set_fact:
+    app_explorers_names: "{{ hosts_file | regex_findall('agent[0-9]{3}', multiline=True, ignorecase=True) }}"
+
+- name: Debug app_explorers_names fact
+  ansible.builtin.debug:
+    var: app_explorers_names
+
+- name: Set environnment variables for explorers/watchers
+  tags: app, env
+  ansible.builtin.set_fact:
+    app_env:
+      BASE_PORT: "{{ app_base_port }}"
+      BASE_WS_PORT: "{{ app_base_ws_port }}"
+      BASE_APP_PORT: "{{ app_base_app_port }}"
+      BASE_MONGO_PORT: "{{ app_base_mongo_port }}"
+      API_BASE_URL: "{{ app_api_url }}"
+      DELAY: "{{ app_delay }}"
+      SIZE: "{{ app_size }}"
+      AGENT_NAME: "{{ app_agent_name | default(omit) }}"
+      WATCHER_NAME: "{{ app_watcher_name | default(omit) }}"
+      # BACKEND_SERVICES: "{{ app_explorers_names | join(':' + app_base_port + ',') + ':' + app_base_port if (app_modules.watcher | default(false) and app_explorers_names | length > 0) else omit }}"
+      BACKEND_SERVICES: >-
+        {{ app_explorers_names | join(':' + app_base_port | string + ',') + ':' + app_base_port | string
+        if (app_modules.watcher | default(false) and app_explorers_names | length > 0) else omit }}
+      # MONGO_REPL_URI: "mongodb://{{ app_explorers_names | join(':' + app_base_mongo_port + ',') }}/{{ app_db_name }}?replicaSet={{ app_mongo_replica_set_name }}"
+      REPL_MONGO_URI: >-
+        mongodb://{{ app_explorers_names | join(':' + app_base_mongo_port | string + ',') + ':' + app_base_mongo_port | string }}/
+        {{ app_db_name }}?replicaSet={{ app_mongo_replica_set_name }}
+      DB_NAME: "{{ app_db_name }}"
+
+# mongodb://10.89.2.11:27018,10.89.2.12:27018,10.89.2.13:27018,10.89.2.14:27018,10.89.2.15:27018/v2grid?replicaSet=shard1
+- name: Debug env_variables
+  tags: app, env, debug
+  ansible.builtin.debug:
+    var: app_env
 
 - name: Deploy explorer module
   tags: app, deploy, explorer

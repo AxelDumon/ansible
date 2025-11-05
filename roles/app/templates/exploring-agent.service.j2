@@ -3,13 +3,14 @@ Description=Exploring Agent Application
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/concurrently --names "front,server" "npm start --prefix {{ frontend_dir | default('public')}}" "node {{ backend_dir | default('server') }}/build/app.js"
+ExecStart=/usr/bin/concurrently --names "front,server" "npm start --prefix {{ frontend_dir | default('public')}}" "npm start --prefix {{ backend_dir | default('server') }}."
 WorkingDirectory={{ working_dir | default('/app') }}
 Restart=always
 StandardOutput=syslog
 StandardError=syslog
 {# User={{ service_user | default('root') }} #}
 Environment=NODE_ENV=production PORT=80
+{# EnvironmentFile={{ env_file | default('/app/.env') }} #}
 
 [Install]
 WantedBy=multi-user.target

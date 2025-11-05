@@ -12,6 +12,20 @@
       - "Distribution: {{ os_distribution }}"
       - "Version: {{ os_version }}"
 
+- name: Debug /etc/hosts content for MongoDB nodes
+  ansible.builtin.slurp:
+    src: /etc/hosts
+  register: hosts_file
+
+- name: Define nodes for replication
+  ansible.builtin.set_fact:
+    db_nodes: "{{ hosts_file.content | b64decode | regex_findall('agent[0-9]{3}', multiline=True, ignorecase=True) | default([]) }}"
+  failed_when: db_nodes | length == 0
+
+- name: Debug db_nodes fact
+  ansible.builtin.debug:
+    var: db_nodes
+
 - name: Select the database to install
   ansible.builtin.set_fact:
     db_name: "{{ db_name | default('mongodb') }}"
@@ -23,3 +37,4 @@
 - name: Include CouchDB installation tasks
   ansible.builtin.include_tasks: couchdb.yml
   when: db_name == 'couchdb'
+

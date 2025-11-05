@@ -12,14 +12,6 @@
     - "{{ os_family | lower }}.yml"
     - default.yml
 
-- name: Ensure SSH key exists for the user
-  ansible.builtin.user:
-    name: "{{ sshd_user }}"
-    generate_ssh_key: true
-    ssh_key_bits: 2048
-    ssh_key_comment: "{{ sshd_user }}@{{ ansible_facts['hostname'] }}"
-  when: os_family != "Windows"
-
 - name: Configure SSH for Linux
   ansible.builtin.include_tasks: linux.yml
   when: os_family != "Windows"
@@ -33,15 +25,39 @@
     name: "{{ sshd_service }}"
     state: started
     enabled: true
+
+- name: Ensure the root user's .ssh directory exists
+  ansible.builtin.file:
+    path: /root/.ssh
+    state: directory
+    mode: '0700'
+
+# - name: Ensure SSH key exists for the user
+#   ansible.builtin.user:
+#     name: "{{ sshd_user }}"
+#     generate_ssh_key: true
+#     ssh_key_bits: 2048
+#     ssh_key_comment: "{{ sshd_user }}@{{ ansible_facts['hostname'] }}"
+#   when: os_family != "Windows"
+
 - name: Copy ssh key to authorized_keys
   ansible.builtin.authorized_key:
-    user: "{{ sshd_user }}"
+    user: "root"
     state: present
     key: "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
-- name: Disable password authentication for SSH
+  when: os_family != "Windows"
+
+- name: Enable root login in SSH configuration
   ansible.builtin.lineinfile:
     path: /etc/ssh/sshd_config
-    regexp: '^PasswordAuthentication'
-    line: 'PasswordAuthentication no'
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin yes'
     state: present
-  when: os_family != "Windows"
+  notify: Restart SSHD
+# - name: Disable password authentication for SSH
+#   ansible.builtin.lineinfile:
+#     path: /etc/ssh/sshd_config
+#     regexp: '^PasswordAuthentication'
+#     line: 'PasswordAuthentication no'
+#     state: present
+#   when: os_family != "Windows"

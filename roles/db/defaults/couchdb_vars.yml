@@ -1,0 +1,10 @@
+couchdb_erl_cookie: 8zplQ4cMBYma4y6
+couchdb_admin_user: admin
+couchdb_admin_password: password
+couchdb_q: 1
+couchdb_n: 1
+couchdb_max_history: 8
+couchdb_retries_per_request: 7
+couchdb_max_jobs: 20
+couchdb_interval: 60000
+couchdb_max_churn: 10

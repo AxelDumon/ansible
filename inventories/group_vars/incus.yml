@@ -1,0 +1,6 @@
+ansible_user: root
+ansible_password: {{ vault_ssh_passwords.incus }}
+ansible_become_password: {{ vault_sudo_passwords.incus }}
+ansible_become: true
+ansible_become_method: sudo
+# ansible_ssh_private_key_file: /home/axel/.ssh/id_ed25519
