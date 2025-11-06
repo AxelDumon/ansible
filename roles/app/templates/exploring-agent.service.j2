@@ -3,7 +3,7 @@ Description=Exploring Agent Application
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/concurrently --names "front,server" "npm start --prefix {{ frontend_dir | default('public')}}" "npm start --prefix {{ backend_dir | default('server') }}."
+ExecStart=concurrently --names "front,server" "npm start --prefix {{ frontend_dir | default('public')}}" "npm start --prefix {{ backend_dir | default('server') }}"
 WorkingDirectory={{ working_dir | default('/app') }}
 Restart=always
 StandardOutput=syslog

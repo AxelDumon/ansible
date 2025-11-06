@@ -87,16 +87,14 @@
       BASE_WS_PORT: "{{ app_base_ws_port }}"
       BASE_APP_PORT: "{{ app_base_app_port }}"
       BASE_MONGO_PORT: "{{ app_base_mongo_port }}"
-      API_BASE_URL: "{{ app_api_url }}"
+      API_BASE_URL: "{{ 'http://' + app_watcher_name + ':3001' if (app_modules.watcher | default(false)) else omit }}"
       DELAY: "{{ app_delay }}"
       SIZE: "{{ app_size }}"
       AGENT_NAME: "{{ app_agent_name | default(omit) }}"
       WATCHER_NAME: "{{ app_watcher_name | default(omit) }}"
-      # BACKEND_SERVICES: "{{ app_explorers_names | join(':' + app_base_port + ',') + ':' + app_base_port if (app_modules.watcher | default(false) and app_explorers_names | length > 0) else omit }}"
       BACKEND_SERVICES: >-
         {{ app_explorers_names | join(':' + app_base_port | string + ',') + ':' + app_base_port | string
         if (app_modules.watcher | default(false) and app_explorers_names | length > 0) else omit }}
-      # MONGO_REPL_URI: "mongodb://{{ app_explorers_names | join(':' + app_base_mongo_port + ',') }}/{{ app_db_name }}?replicaSet={{ app_mongo_replica_set_name }}"
       REPL_MONGO_URI: >-
         mongodb://{{ app_explorers_names | join(':' + app_base_mongo_port | string + ',') + ':' + app_base_mongo_port | string }}/
         {{ app_db_name }}?replicaSet={{ app_mongo_replica_set_name }}
