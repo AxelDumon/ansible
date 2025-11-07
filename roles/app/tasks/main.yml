@@ -137,7 +137,7 @@
 - name: Copy deploy keys to remote host
   tags: app, deploy, keys, explorer, watcher
   ansible.builtin.copy:
-    src: "~/.ssh/{{ item }}"
+    src: "files/{{ item }}"
     dest: "~/.ssh/{{ item }}"
     mode: '0600'
     owner: "{{ user }}"
