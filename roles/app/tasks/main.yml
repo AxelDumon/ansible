@@ -5,6 +5,20 @@
 #     # app_os_version: "{{ ansible_facts['distribution_version'] }}"
 #     app_modules: "{{ app_modules | default({'explorer': true, 'watcher': false}) }}"
 
+- name: Install needed packages
+  ansible.builtin.package:
+    name:
+      - git
+      - npm
+      - nodejs
+    state: present
+
+- name: Install TypeScript globally if not present
+  community.general.npm:
+    name: typescript
+    global: true
+    state: present
+
 - name: Debug temp
   ansible.builtin.debug:
     var: groups['exploringAgents'] | regex_search(ansible_hostname) is not none
@@ -60,7 +74,7 @@
     var: app_agent_name
   when: app_modules.explorer | default(false)
 
-- name: Set app_watcher_name based on /etc/hosts content
+- name: Set app_watcher_name and watcher_ip based on /etc/hosts content
   ansible.builtin.set_fact:
     app_watcher_name: "{{ hosts_file | split('\n') | select('search', ansible_default_ipv4.address) | first | regex_search('watcher[0-9]{3}') | default('') }}"
   when: app_modules.watcher | default(false)
@@ -79,15 +93,22 @@
   ansible.builtin.debug:
     var: app_explorers_names
 
+- name: Set ssh_key fact
+  ansible.builtin.set_fact:
+    ssh_key: "{{ lookup('file', 'ssh-key') }}"
+
 - name: Set environnment variables for explorers/watchers
-  tags: app, env
+  tags: app, env, explorer, watcher
   ansible.builtin.set_fact:
     app_env:
       BASE_PORT: "{{ app_base_port }}"
       BASE_WS_PORT: "{{ app_base_ws_port }}"
       BASE_APP_PORT: "{{ app_base_app_port }}"
       BASE_MONGO_PORT: "{{ app_base_mongo_port }}"
-      API_BASE_URL: "{{ 'http://' + app_watcher_name + ':3001' if (app_modules.watcher | default(false)) else omit }}"
+      API_BASE_URL: >-
+        {{ 'http://' + ansible_default_ipv4.address + ':3001' | string if (app_modules.watcher | default(false)) else
+        omit }}
+      #  {{ 'http://' + app_watcher_name + ':3001' if (app_modules.watcher | default(false)) else omit }}
       DELAY: "{{ app_delay }}"
       SIZE: "{{ app_size }}"
       AGENT_NAME: "{{ app_agent_name | default(omit) }}"
@@ -96,8 +117,8 @@
         {{ app_explorers_names | join(':' + app_base_port | string + ',') + ':' + app_base_port | string
         if (app_modules.watcher | default(false) and app_explorers_names | length > 0) else omit }}
       REPL_MONGO_URI: >-
-        mongodb://{{ app_explorers_names | join(':' + app_base_mongo_port | string + ',') + ':' + app_base_mongo_port | string }}/
-        {{ app_db_name }}?replicaSet={{ app_mongo_replica_set_name }}
+       mongodb://{{ app_explorers_names | join(':' + app_base_mongo_port | string + ',') + ':' + app_base_mongo_port | string }}/
+       {{ app_db_name }}?replicaSet={{ app_mongo_replica_set_name }}
       DB_NAME: "{{ app_db_name }}"
 
 # mongodb://10.89.2.11:27018,10.89.2.12:27018,10.89.2.13:27018,10.89.2.14:27018,10.89.2.15:27018/v2grid?replicaSet=shard1
@@ -105,6 +126,26 @@
   tags: app, env, debug
   ansible.builtin.debug:
     var: app_env
+
+- name: Create key_file for git access
+  tags: app, deploy, keys, explorer, watcher
+  ansible.builtin.copy:
+    content: "{{ ssh_key }}"
+    dest: ~/.ssh/id_ed25519
+    mode: '0600'
+
+- name: Copy deploy keys to remote host
+  tags: app, deploy, keys, explorer, watcher
+  ansible.builtin.copy:
+    src: "~/.ssh/{{ item }}"
+    dest: "~/.ssh/{{ item }}"
+    mode: '0600'
+    owner: "{{ user }}"
+    group: "{{ group }}"
+  loop:
+    - ExplorationToyProblem-Backend
+    - ExplorationToyProblem-LocalFront
+    - ExplorationToyProblem-GlobalFront
 
 - name: Deploy explorer module
   tags: app, deploy, explorer

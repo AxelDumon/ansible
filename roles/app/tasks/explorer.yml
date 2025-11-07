@@ -1,68 +1,28 @@
-- name: Copy built local front to target location
-  tags: app, build, deploy, frontend
-  ansible.builtin.copy:
-    src: /tmp/ExplorationToyProblem-LocalFront/build/
-    dest: /app/public/build
-    mode: '0755'
-    owner: "{{ user }}"
-    group: "{{ group }}"
+- name: Clone or update local front repository
+  ansible.builtin.git:
+    repo: 'git@github.com:AxelDumon/ExplorationToyProblem-LocalFront.git'
+    dest: /app/public
+    version: "{{ app_version }}"
+    update: true
     force: true
+    accept_hostkey: true
+    key_file: ~/.ssh/ExplorationToyProblem-LocalFront
 
-- name: Copy front package-lock.json to target location
-  tags: app, build, deploy
-  ansible.builtin.copy:
-    src: /tmp/ExplorationToyProblem-LocalFront/package-lock.json
-    dest: /app/public/package-lock.json
-    owner: "{{ user }}"
-    group: "{{ group }}"
+- name: Clone or update backend repository
+  ansible.builtin.git:
+    repo: 'git@github.com:AxelDumon/ExplorationToyProblem-Backend.git'
+    dest: /app/server
+    version: "{{ app_version }}"
     force: true
-    mode: '0644'
-
-- name: Copy front package.json to target location
-  tags: app, build, deploy
-  ansible.builtin.copy:
-    src: /tmp/ExplorationToyProblem-LocalFront/package.json
-    dest: /app/public/package.json
-    owner: "{{ user }}"
-    group: "{{ group }}"
-    force: true
-    mode: '0644'
-
-- name: Copy built app to target location
-  tags: app, build, deploy
-  ansible.builtin.copy:
-    src: /tmp/ExplorationToyProblem-Backend/build/
-    dest: /app/server/build
-    owner: "{{ user }}"
-    group: "{{ group }}"
-    force: true
-    mode: '0755'
-
-- name: Copy back package-lock.json to target location
-  tags: app, build, deploy
-  ansible.builtin.copy:
-    src: /tmp/ExplorationToyProblem-Backend/package-lock.json
-    dest: /app/server/package-lock.json
-    owner: "{{ user }}"
-    group: "{{ group }}"
-    force: true
-    mode: '0644'
-
-- name: Copy back package.json to target location
-  tags: app, build, deploy
-  ansible.builtin.copy:
-    src: /tmp/ExplorationToyProblem-Backend/package.json
-    dest: /app/server/package.json
-    owner: "{{ user }}"
-    group: "{{ group }}"
-    force: true
-    mode: '0644'
+    update: true
+    accept_hostkey: true
+    key_file: ~/.ssh/ExplorationToyProblem-Backend
 
 - name: Create .env file for the backend
   tags: app, build, deploy, env
   ansible.builtin.template:
     src: explorer-env.j2
-    dest: /app/{{item}}/.env
+    dest: "/app/{{ item }}/.env"
     mode: '0644'
     owner: "{{ user }}"
     group: "{{ group }}"
@@ -75,7 +35,15 @@
     name:
       - nodejs
       - npm
-    state: latest
+    state: present
+
+- name: Clean node_modules directories
+  ansible.builtin.file:
+    path: /app/{{ item }}/node_modules
+    state: absent
+  loop:
+    - public
+    - server
 
 - name: Ensure dependencies are installed globally
   community.general.npm:
@@ -85,6 +53,27 @@
   loop:
     - concurrently
     - vite
+
+- name: Install dependencies locally
+  tags: app, build, deploy
+  ansible.builtin.command:
+    cmd: npm install
+    chdir: /app/{{ item }}
+    creates: /app/{{ item }}/node_modules
+  loop:
+    - public
+    - server
+
+- name: Build apps locally
+  tags: app, build, deploy
+  ansible.builtin.command:
+    cmd: npm run build
+    chdir: /app/{{ item }}
+    creates: /app/{{ item }}/build
+  loop:
+    - public
+    - server
+
 
 - name: Create service file for exploring agent
   tags: app, build, deploy, systemd

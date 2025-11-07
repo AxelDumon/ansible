@@ -1,52 +1,37 @@
----
-- name: Copy vite built front to target location
-  tags: app, build, deploy
-  ansible.builtin.copy:
-    src: /tmp/ExplorationToyProblem-GlobalFront/build/
-    dest: /app/global/build
-    owner: "{{ user }}"
-    group: "{{ group }}"
+- name: Clone or update global front repository
+  ansible.builtin.git:
+    repo: 'git@github.com:AxelDumon/ExplorationToyProblem-GlobalFront.git'
+    dest: /app/global
+    version: "{{ app_version }}"
+    update: true
     force: true
-    mode: '0755'
-
-- name: Copy express built back to target location
-  tags: app, build, deploy
-  ansible.builtin.copy:
-    src: /tmp/ExplorationToyProblem-GlobalFront/dist/
-    dest: /app/global/dist/
-    owner: "{{ user }}"
-    group: "{{ group }}"
-    force: true
-    mode: '0755'
-
-- name: Copy package-lock.json to target location
-  tags: app, build, deploy
-  ansible.builtin.copy:
-    src: /tmp/ExplorationToyProblem-GlobalFront/package-lock.json
-    dest: /app/global/package-lock.json
-    owner: "{{ user }}"
-    group: "{{ group }}"
-    force: true
-    mode: '0644'
-
-- name: Copy package.json to target location
-  tags: app, build, deploy
-  ansible.builtin.copy:
-    src: /tmp/ExplorationToyProblem-GlobalFront/package.json
-    dest: /app/global/package.json
-    owner: "{{ user }}"
-    group: "{{ group }}"
-    force: true
-    mode: '0644'
+    accept_hostkey: true
+    key_file: ~/.ssh/ExplorationToyProblem-GlobalFront
 
 - name: Create the .env file
   tags: app, build, deploy, env
   ansible.builtin.template:
     src: watcher-env.j2
-    dest: /app/{{item}}/.env
+    dest: "/app/{{ item }}/.env"
     mode: '0644'
     owner: "{{ user }}"
     group: "{{ group }}"
+  loop:
+    - global
+
+- name: Clean node_modules directories
+  ansible.builtin.file:
+    path: /app/{{ item }}/node_modules
+    state: absent
+  loop:
+    - global
+
+- name: Install dependencies locally
+  tags: app, build, deploy
+  ansible.builtin.command:
+    cmd: npm install
+    chdir: /app/{{ item }}
+    creates: /app/{{ item }}/node_modules
   loop:
     - global
 
@@ -55,13 +40,22 @@
     name:
       - nodejs
       - npm
-    state: latest
+    state: present
 
 - name: Ensure vite is installed globally
   community.general.npm:
     name: vite
     global: true
     state: present
+
+- name: Build apps locally
+  tags: app, build, deploy
+  ansible.builtin.command:
+    cmd: npm run build
+    chdir: /app/{{ item }}
+    creates: /app/{{ item }}/build
+  loop:
+    - global
 
 - name: Create service file for watching agent
   tags: app, build, deploy, systemd

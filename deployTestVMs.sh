@@ -26,6 +26,6 @@ ansible-playbook network_test.yml # --ask-vault-pass
 
 ansible-playbook bdd_test.yml # --ask-vault-pass
 
-ansible-playbook playbooks/prepare_app.yml
+# ansible-playbook playbooks/prepare_app.yml
 
 ansible-playbook role_test.yml # --ask-vault-pass

@@ -1,0 +1,9 @@
+---
+- name: Print debug info for SSH keys
+  hosts: localhost
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Display SSH public key content
+      ansible.builtin.debug:
+        msg: "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
