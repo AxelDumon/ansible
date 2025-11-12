@@ -23,11 +23,17 @@
   ansible.builtin.debug:
     var: groups['exploringAgents'] | regex_search(ansible_hostname) is not none
 
+# - name: Set application modules to deploy
+#   ansible.builtin.set_fact:
+#     app_modules:
+#       explorer: "{{ groups['exploringAgents'] | default([]) | regex_search(ansible_hostname) is not none }}"
+#       watcher: "{{ groups['watchingAgents'] | default([]) | regex_search(ansible_hostname) is not none }}"
+
 - name: Set application modules to deploy
   ansible.builtin.set_fact:
     app_modules:
-      explorer: "{{ groups['exploringAgents'] | regex_search(ansible_hostname) is not none }}"
-      watcher: "{{ groups['watchingAgents'] | regex_search(ansible_hostname) is not none }}"
+      explorer: "{{ 'exploringAgents' in group_names }}"
+      watcher: "{{ 'watchingAgents' in group_names }}"
 
 - name: Debug detected modules
   ansible.builtin.debug:
@@ -140,8 +146,8 @@
     src: "files/{{ item }}"
     dest: "~/.ssh/{{ item }}"
     mode: '0600'
-    owner: "{{ user }}"
-    group: "{{ group }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
   loop:
     - ExplorationToyProblem-Backend
     - ExplorationToyProblem-LocalFront

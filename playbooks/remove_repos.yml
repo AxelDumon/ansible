@@ -1,0 +1,10 @@
+---
+- name: Remove the /app folder
+  hosts: all
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Delete /app directory
+      ansible.builtin.file:
+        state: absent
+        path: /app

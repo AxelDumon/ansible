@@ -1,0 +1,7 @@
+ansible_user: smac
+ansible_password: "{{ vault_ssh_passwords.smac }}"
+ansible_become_password: "{{ vault_sudo_passwords.smac }}"
+ansible_become: true
+ansible_become_method: sudo
+sshd_user: smac
+ansible_ssh_private_key_file: /home/axel/.ssh/id_ed25519

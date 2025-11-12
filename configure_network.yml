@@ -1,0 +1,7 @@
+---
+- name: Test the network role
+  hosts: all
+  gather_facts: true
+  timeout: 30
+  roles:
+    - role: network

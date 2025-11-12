@@ -24,8 +24,8 @@
     src: explorer-env.j2
     dest: "/app/{{ item }}/.env"
     mode: '0644'
-    owner: "{{ user }}"
-    group: "{{ group }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
   loop:
     - server
     - public
@@ -74,15 +74,14 @@
     - public
     - server
 
-
 - name: Create service file for exploring agent
   tags: app, build, deploy, systemd
   ansible.builtin.template:
     src: exploring-agent.service.j2
     dest: /etc/systemd/system/exploring-agent.service
     mode: '0644'
-    owner: root
-    group: root
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user}}"
   register: app_exploring_service_conf
   notify: ReloadSystemd
 

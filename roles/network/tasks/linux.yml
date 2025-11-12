@@ -9,3 +9,10 @@
   loop: "{{ lookup('template', 'hosts.j2').splitlines() }}"
   become: true
   notify: restart_systemd_resolved
+
+- name: Ping other nodes to verify connectivity
+  ansible.builtin.command: ping -c 2 "{{ item }}"
+  with_items: "{{ lookup('template', 'hosts.j2').splitlines() | map('regex_search', 'agent[0-9]{3}') | list }}"
+  register: network_ping_results
+  failed_when: false
+  changed_when: false

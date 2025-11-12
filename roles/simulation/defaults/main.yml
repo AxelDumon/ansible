@@ -1,0 +1,5 @@
+---
+simulation_api_host: "localhost"
+simulation_api_port: 3000
+simulation_count: 5
+simulation_name: "default"

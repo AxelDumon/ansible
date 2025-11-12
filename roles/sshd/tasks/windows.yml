@@ -14,8 +14,7 @@
   ansible.builtin.copy:
     src: files/sshd_config.ini
     dest: C:\ProgramData\ssh\sshd_config
-    owner: root
-    group: root
+    owner: "{{ sshd_user }}"
+    group: "{{ sshd_user }}"
     mode: 0644
-
   notify: Restart SSHD

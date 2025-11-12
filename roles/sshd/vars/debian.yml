@@ -1,3 +1,4 @@
 ---
 sshd_service: ssh
 sshd_user: "{{ lookup('env', 'USER') | default('root', true) }}"
+ssh_key_path: "~/.ssh/id_ed25519"

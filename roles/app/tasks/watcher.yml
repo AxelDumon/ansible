@@ -14,8 +14,8 @@
     src: watcher-env.j2
     dest: "/app/{{ item }}/.env"
     mode: '0644'
-    owner: "{{ user }}"
-    group: "{{ group }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
   loop:
     - global
 
@@ -63,8 +63,8 @@
     src: watching-agent.service.j2
     dest: /etc/systemd/system/watching-agent.service
     mode: '0644'
-    owner: root
-    group: root
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
   notify: ReloadSystemd
 
 - name: Install dependencies from lockfile

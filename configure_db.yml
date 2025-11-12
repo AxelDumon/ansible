@@ -1,0 +1,8 @@
+---
+- name: Test db role
+  hosts: exploringAgents
+  become: true
+  roles:
+    - role: db
+      vars:
+        db_name: mongodb
