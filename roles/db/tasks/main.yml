@@ -1,11 +1,13 @@
 ---
 - name: Gather OS facts
+  tags: db, install, config
   ansible.builtin.set_fact:
     os_family: "{{ ansible_facts['os_family'] }}"
     os_distribution: "{{ ansible_facts['distribution'] }}"
     os_version: "{{ ansible_facts['distribution_version'] }}"
 
 - name: Display gathered OS facts
+  tags: debug
   ansible.builtin.debug:
     msg:
       - "OS Family: {{ os_family }}"
@@ -13,28 +15,33 @@
       - "Version: {{ os_version }}"
 
 - name: Debug /etc/hosts content for MongoDB nodes
+  tags: db, install, config
   ansible.builtin.slurp:
     src: /etc/hosts
   register: hosts_file
 
 - name: Define nodes for replication
+  tags: db, install, config
   ansible.builtin.set_fact:
     db_nodes: "{{ hosts_file.content | b64decode | regex_findall('agent[0-9]{3}', multiline=True, ignorecase=True) | default([]) }}"
   failed_when: db_nodes | length == 0
 
 - name: Debug db_nodes fact
+  tags: debug
   ansible.builtin.debug:
     var: db_nodes
 
 - name: Select the database to install
+  tags: db, install, config
   ansible.builtin.set_fact:
     db_name: "{{ db_name | default('mongodb') }}"
 
 - name: Include MongoDB installation tasks
+  tags: db, mongodb, install, config
   ansible.builtin.include_tasks: mongodb.yml
   when: db_name == 'mongodb'
 
 - name: Include CouchDB installation tasks
+  tags: db, couchdb, install, config
   ansible.builtin.include_tasks: couchdb.yml
   when: db_name == 'couchdb'
-

@@ -1,5 +1,6 @@
 ---
 - name: Install MongoDB on Ubuntu
+  tags: db, mongodb, install
   block:
     - name: Install prerequisites for MongoDB
       become: true
@@ -41,11 +42,13 @@
         msg: "MongoDB installation failed."
 
 - name: Ensure the local MongoDB instance is started and enabled
+  tags: db, mongodb, install
   ansible.builtin.systemd:
     name: mongod ##########
     state: started
     enabled: true
 - name: Wait for local MongoDB instance to be ready
+  tags: db, mongodb, install
   become: true
   ansible.builtin.wait_for:
     host: 127.0.0.1
@@ -54,6 +57,7 @@
     timeout: 30
 
 - name: Configure MongoDB replica set instance
+  tags: db, mongodb, confign, install
   block:
     - name: Create MongoDB data directory for port 27018
       ansible.builtin.file:
@@ -95,6 +99,7 @@
         msg: "Failed to configure MongoDB replica set instance."
 
 - name: Configure MongoDB replica set
+  tags: db, mongodb, config
   become: true
   block:
     - name: Debug regex_findall result for MongoDB nodes

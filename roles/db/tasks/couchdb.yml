@@ -1,9 +1,11 @@
 ---
 - name: Add default variables for CouchDB installation
+  tags: db, couchdb, install
   ansible.builtin.include_vars:
     file: ../defaults/couchdb_vars.yml
 
 - name: Install CouchDB on Ubuntu
+  tags: db, couchdb, install
   block:
     - name: Install prerequisites for CouchDB
       become: true
@@ -64,6 +66,7 @@
   become: true
 
 - name: Configure CouchDB settings
+  tags: db, couchdb, config
   block:
     - name: Copy configuration template for CouchDB
       ansible.builtin.template:
@@ -75,43 +78,45 @@
       become: true
       notify: Restart CouchDB
 
-- name: Wait for CouchDB to be ready
-  ansible.builtin.wait_for:
-    host: localhost
-    port: 5984
-    delay: 5
-    timeout: 30
+    - name: Wait for CouchDB to be ready
+      ansible.builtin.wait_for:
+        host: localhost
+        port: 5984
+        delay: 5
+        timeout: 30
 
-- name: Save credentials
-  set_fact:
-    couchdb_credentials: "Basic {{ (couchdb_admin_user + ':' + couchdb_admin_password) | b64encode }}"
+    - name: Save credentials
+      set_fact:
+        couchdb_credentials: "Basic {{ (couchdb_admin_user + ':' + couchdb_admin_password) | b64encode }}"
 
-- name: Put v2grid database in CouchDB
-  ansible.builtin.uri:
-    url: "http://localhost:5984/v2grid" ####
-    method: PUT
-    headers:
-      Content-Type: application/json
-      Authorization: "{{ couchdb_credentials }}"
-    status_code: [201, 412]
-  register: create_db_result
-
-- name: Set up replication between CouchDB nodes
-  block:
-    - name: Set up replication to peers
+    - name: Put v2grid database in CouchDB
+      tags: db, couchdb, config
       ansible.builtin.uri:
-        url: "http://localhost:5984/_replicator"
-        method: POST
+        url: "http://localhost:5984/v2grid" ####
+        method: PUT
         headers:
           Content-Type: application/json
           Authorization: "{{ couchdb_credentials }}"
-        body_format: json
-        body: |
-          {
-            "source": "http://{{ couchdb_admin_user }}:{{ couchdb_admin_password }}@127.0.0.1:5984/v2grid",
-            "target": "http://{{ couchdb_admin_user }}:{{ couchdb_admin_password }}@{{ item }}:5984/v2grid",
-            "continuous": true
-          }
-        status_code: 201
-      loop: "{{ db_nodes }}"
-  when: db_nodes is defined and db_nodes | length > 0
+        status_code: [201, 412]
+      register: create_db_result
+
+    - name: Set up replication between CouchDB nodes
+      tags: db, couchdb, config
+      block:
+        - name: Set up replication to peers
+          ansible.builtin.uri:
+            url: "http://localhost:5984/_replicator"
+            method: POST
+            headers:
+              Content-Type: application/json
+              Authorization: "{{ couchdb_credentials }}"
+            body_format: json
+            body: |
+              {
+                "source": "http://{{ couchdb_admin_user }}:{{ couchdb_admin_password }}@127.0.0.1:5984/v2grid",
+                "target": "http://{{ couchdb_admin_user }}:{{ couchdb_admin_password }}@{{ item }}:5984/v2grid",
+                "continuous": true
+              }
+            status_code: 201
+          loop: "{{ db_nodes }}"
+      when: db_nodes is defined and db_nodes | length > 0

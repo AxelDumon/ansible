@@ -1,5 +1,6 @@
 ---
 - name: Add entries to /etc/hosts for local DNS resolution dynamically
+  tags: root, network, config
   ansible.builtin.lineinfile:
     path: /etc/hosts
     line: "{{ item }}"
@@ -10,7 +11,12 @@
   become: true
   notify: restart_systemd_resolved
 
+- name: Write custom resolv.conf to use systemd-resolved
+  tags: rootless, network, config
+    
+
 - name: Ping other nodes to verify connectivity
+  tags: network, config
   ansible.builtin.command: ping -c 2 "{{ item }}"
   with_items: "{{ lookup('template', 'hosts.j2').splitlines() | map('regex_search', 'agent[0-9]{3}') | list }}"
   register: network_ping_results

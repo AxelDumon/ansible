@@ -63,9 +63,10 @@
     src: watching-agent.service.j2
     # dest: /etc/systemd/system/watching-agent.service
     dest: ~/.config/systemd/user/watching-agent.service
-    mode: '0755'
+    mode: '0644'
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
+  notify: ReloadSystemd
 
 - name: Install dependencies from lockfile
   tags: app, build, deploy
@@ -73,11 +74,6 @@
     ci: true
     path: ~/opt/app/global
     state: present
-
-- name: Reload systemd user daemon
-  ansible.builtin.command:
-    cmd: systemctl --user daemon-reload
-  become_user: "{{ ansible_user }}"
 
 # - name: Start watching-agent service
 #   tags: app, build, deploy
@@ -87,10 +83,9 @@
 #     state: started
 
 - name: Start watching-agent service at user level
-  tags: app, build, deploy, systemd
+  tags: app, build, deploy
   ansible.builtin.command:
     cmd: systemctl --user enable --now watching-agent
-  become_user: "{{ ansible_user }}"
 
 # - name: Start watching-agent app without systemd
 #   tags: app, build, deploy

@@ -1,0 +1,5 @@
+container_version: "mongodb" # Specify the version of the container image (mongodb, couchdb, ...)
+container_app_image_name: "exploration-app:latest"
+container_name: "exploration-container"
+container_host_ports: [3000, 8000, 3001, 27017, 27018]
+container_ports: [3000, 8000, 3001, 27017, 27018]

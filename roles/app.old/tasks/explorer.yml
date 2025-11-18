@@ -7,7 +7,6 @@
     force: true
     accept_hostkey: true
     key_file: ~/.ssh/ExplorationToyProblem-LocalFront
-  become_user: "{{ ansible_user }}"
 
 - name: Clone or update backend repository
   ansible.builtin.git:
@@ -18,7 +17,6 @@
     update: true
     accept_hostkey: true
     key_file: ~/.ssh/ExplorationToyProblem-Backend
-  become_user: "{{ ansible_user }}"
 
 - name: Create .env file for the backend
   tags: app, build, deploy, env
@@ -33,7 +31,6 @@
     - public
 
 - name: Ensure nodejs and npm are installed
-  tags: app, build, deploy, root
   ansible.builtin.package:
     name:
       - nodejs
@@ -87,15 +84,7 @@
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
   register: app_exploring_service_conf
-
-- name: Verify the service file exists
-  ansible.builtin.stat:
-    path: ~/.config/systemd/user/exploring-agent.service
-  register: service_file
-
-- name: Debug service file status
-  ansible.builtin.debug:
-    var: service_file
+  notify: ReloadSystemd
 
 - name: Install dependencies from lockfile
   tags: app, build, deploy
@@ -103,11 +92,6 @@
     ci: true
     path: ~/opt/app/server
     state: present
-
-- name: Reload systemd user daemon
-  ansible.builtin.command:
-    cmd: "systemctl --user daemon-reload"
-  become_user: "{{ ansible_user }}"
 
 # - name: Start exploring-agent service
 #   tags: app, build, deploy
@@ -120,7 +104,6 @@
   tags: app, build, deploy
   ansible.builtin.command:
     cmd: systemctl --user enable --now exploring-agent
-  become_user: "{{ ansible_user }}"
 
 # - name: Start exploring-agent app without systemd
 #   tags: app, build, deploy

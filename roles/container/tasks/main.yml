@@ -1,0 +1,65 @@
+# Can't do this, need root privileges to install packages
+# - name: Install required packages for container management
+  # ansible.builtin.package:
+    # name:
+      # - podman
+    # state: present
+
+- name: Copy Dockerfile to the target host
+  ansible.builtin.copy:
+    src: "files/Dockerfile"
+    dest: "/tmp/Dockerfile"
+    owner: "{{ ansible_user }}"
+    mode: '0644'
+
+- name: Pull base image for Podman
+  containers.podman.podman_image:
+    name: "docker.io/library/node:20"
+    state: present
+
+- name: Debug container variables
+  ansible.builtin.debug:
+    msg:
+      - "Container Image Name: {{ container_app_image_name }}"
+      - "Container Name: {{ container_name }}"
+      - "Container Host Ports: {{ container_host_ports }}"
+      - "Container Ports: {{ container_ports }}"
+
+- name: Build the Podman app image
+  containers.podman.podman_image:
+    name: "{{ container_app_image_name }}"
+    path: "/tmp"
+    state: build
+    build:
+      file: Dockerfile
+
+# - name: Allow traffic on the host port
+#   ansible.posix.firewalld:
+#     port: "{{ item }}/tcp"
+#     permanent: true
+#     state: enabled
+#   with_items: "{{ container_host_ports }}"
+#   when: ansible_facts['os_family'] == "RedHat"
+
+# - name: Allow traffic on the host port (Debian-based systems)
+#   ansible.builtin.command:
+#     cmd: "ufw allow {{ item }}/tcp"
+#   with_items: "{{ container_host_ports }}"
+#   when: ansible_facts['os_family'] == "Debian"
+
+- name: Run the Podman container
+  containers.podman.podman_container:
+    name: "{{ container_name }}"
+    image: "{{ container_app_image_name }}"
+    state: started
+    ports: "{{ container_host_ports | zip(container_ports) | map('join', ':') | list }}"
+    restart_policy: always
+
+# - name: Ensure the container is running
+#   containers.podman.podman_container_info:
+#     name: "{{ container_name }}"
+#   register: container_info
+
+# - name: Debug container info
+#   ansible.builtin.debug:
+#     var: container_info

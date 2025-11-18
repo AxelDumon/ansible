@@ -7,6 +7,8 @@
     url: "http://{{ item }}:{{ simulation_api_port }}/api/explore"
     method: POST
     status_code: 200
+  async: 400
+  poll: 0
   loop: "{{ agents_list }}"
 
 - name: Wait for each agents to finish exploring

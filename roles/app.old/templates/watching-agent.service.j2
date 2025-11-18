@@ -6,13 +6,10 @@ After=network.target
 ExecStart=/usr/bin/npm start --prefix {{ app_target_src_dir | default('/app/global') }}
 WorkingDirectory={{ working_dir | default('/app') }}
 Restart=always
-{# StandardOutput=syslog #}
-{# StandardError=syslog #}
-StandardOutput=journal
-StandardError=journal
+StandardOutput=syslog
+StandardError=syslog
 {# User={{ service_user | default('root') }} #}
-{# Environment=NODE_ENV=production #}
+Environment=NODE_ENV=production
 
 [Install]
-WantedBy=default.target
-{# WantedBy=multi-user.target #}
+WantedBy=multi-user.target
