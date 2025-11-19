@@ -102,10 +102,6 @@
   tags: db, mongodb, config
   become: true
   block:
-    - name: Debug regex_findall result for MongoDB nodes
-      ansible.builtin.debug:
-        msg: "{{ hosts_file.content | b64decode | regex_findall('agent[0-9]{3}', multiline=True, ignorecase=True) }}"
-
     - name: Debug replica set members with mongodb port
       ansible.builtin.debug:
         msg: "{{ db_nodes | map('regex_replace', '(:27018)?$', ':27018') | list }}"
