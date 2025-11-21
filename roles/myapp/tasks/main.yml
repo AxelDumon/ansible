@@ -1,0 +1,138 @@
+- name: Install needed packages
+  tags: app, setup, prerequisites
+  ansible.builtin.package:
+    name:
+      - git
+      - npm
+      - nodejs
+    state: present
+
+- name: Install TypeScript globally if not present
+  community.general.npm:
+    name: typescript
+    global: true
+    state: present
+
+- name: Set application modules to deploy
+  ansible.builtin.set_fact:
+    app_modules:
+      explorer: true
+      watcher: false
+
+- name: Debug detected modules
+  ansible.builtin.debug:
+    var: app_modules
+
+- name: Initialize agents_dict as an empty dictionary
+  ansible.builtin.set_fact:
+    exploring_agents_dict: {}
+
+- name: Append each host's IP to exploring_agents_dict with "agentN"
+  ansible.builtin.set_fact:
+    exploring_agents_dict: "{{ exploring_agents_dict | combine({ hostvars[item].ansible_host: 'agent' + '%03d' | format(item_index + 1) }) }}"
+  with_items: "{{ groups['all'] }}"
+  loop_control:
+    index_var: item_index  # Provides the index of the current item in the loop
+
+- name: Display exploring_agents_dict
+  ansible.builtin.debug:
+    var: exploring_agents_dict
+
+- name: Set app_agent_name based on exploring_agents_dict content
+  ansible.builtin.set_fact:
+    app_agent_name: "{{ exploring_agents_dict[ansible_default_ipv4.address] }}"
+  when: app_modules.explorer | default(false)
+  failed_when: app_agent_name == ''
+
+- name: Set app_watcher_name fact
+  ansible.builtin.set_fact:
+    app_watcher_name: "Watcher"
+  when: app_modules.watcher | default(false)
+  failed_when: app_watcher_name == ''
+
+- name: Debug app_agent_name fact
+  ansible.builtin.debug:
+    var: app_agent_name
+  when: app_modules.explorer | default(false)
+
+- name: Set app_explorers_ips fact
+  ansible.builtin.set_fact:
+    app_explorers_ips: "{{ exploring_agents_dict.keys() | list }}"
+
+- name: Debug app_explorers_ips fact
+  ansible.builtin.debug:
+    var: app_explorers_ips
+
+- name: Set environnment variables for explorers/watchers
+  tags: app, env, explorer, watcher
+  ansible.builtin.set_fact:
+    app_env:
+      BASE_PORT: "{{ app_base_port }}"
+      BASE_WS_PORT: "{{ app_base_ws_port }}"
+      BASE_APP_PORT: "{{ app_base_app_port }}"
+      BASE_MONGO_PORT: "{{ app_base_mongo_port }}"
+      API_BASE_URL: >-
+        {{ 'http://' + ansible_default_ipv4.address + ':3001' | string if (app_modules.watcher | default(false)) else
+        omit }}
+      #  {{ 'http://' + app_watcher_name + ':3001' if (app_modules.watcher | default(false)) else omit }}
+      DELAY: "{{ app_delay }}"
+      SIZE: "{{ app_size }}"
+      AGENT_NAME: "{{ app_agent_name | default(omit) }}"
+      WATCHER_NAME: "{{ app_watcher_name | default(omit) }}"
+      BACKEND_SERVICES: >-
+        {{ app_explorers_ips | join(':' + app_base_port | string + ',') + ':' + app_base_port | string
+        if (app_modules.watcher | default(false) and app_explorers_ips | length > 0) else omit }}
+      REPL_MONGO_URI: >-
+       mongodb://{{ app_explorers_ips | join(':' + app_base_mongo_port | string + ',') + ':' + app_base_mongo_port | string }}/
+       {{ app_db_name }}?replicaSet={{ app_mongo_replica_set_name }}
+      DB_NAME: "{{ app_db_name }}"
+
+- name: Debug env_variables
+  tags: app, env, debug
+  ansible.builtin.debug:
+    var: app_env
+
+- name: Copy deploy keys to remote host
+  tags: app, deploy, keys, explorer, watcher
+  ansible.builtin.copy:
+    src: "files/{{ item }}"
+    dest: "~/.ssh/{{ item }}"
+    mode: '0600'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  loop:
+    - ExplorationToyProblem-Backend
+    - ExplorationToyProblem-LocalFront
+    - ExplorationToyProblem-GlobalFront
+  become_user: "{{ ansible_user }}"
+
+- name: Ensure loginctl user-session exists
+  ansible.builtin.command:
+    # cmd: "loginctl enable-linger {{ ansible_user }}"
+    cmd: "loginctl enable-linger {{ ansible_user }}"
+    creates: "/var/lib/systemd/linger/{{ ansible_user }}"
+  become_user: "{{ ansible_user }}"
+
+- name: Create all the intermediates subdirectories for systemd user services
+  ansible.builtin.file:
+    path: "~/.config/systemd/user"
+    state: directory
+    mode: '0755'
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+
+- name: Deploy explorer module
+  tags: app, deploy, explorer
+  # async: 1800
+  # poll: 0
+  ansible.builtin.include_tasks:
+    file: explorer.yml
+  when: app_modules.explorer | default(false)
+
+- name: Deploy watcher module
+  tags: app, deploy, watcher
+  # async: 1800
+  # poll: 0
+  ansible.builtin.include_tasks:
+    file: watcher.yml
+  when: app_modules.watcher | default(false)

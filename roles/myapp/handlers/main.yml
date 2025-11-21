@@ -1,0 +1,6 @@
+---
+- name: Reload systemd daemon when service configuration changes
+  tags: app, service, systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: ReloadSystemd

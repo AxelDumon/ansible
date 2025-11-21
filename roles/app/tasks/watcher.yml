@@ -7,21 +7,22 @@
     force: true
     accept_hostkey: true
     key_file: ~/.ssh/ExplorationToyProblem-GlobalFront
+  when: not adminsys|default(true)|bool
 
 - name: Create the .env file
   tags: app, build, deploy, env
   ansible.builtin.template:
     src: watcher-env.j2
-    dest: "~/opt/app/{{ item }}/.env"
+    dest: "/opt/app/{{ item }}/.env"
     mode: '0644'
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
+    owner: "root"
+    group: "root"
   loop:
     - global
 
 - name: Clean node_modules directories
   ansible.builtin.file:
-    path: ~/opt/app/{{ item }}/node_modules
+    path: /opt/app/{{ item }}/node_modules
     state: absent
   loop:
     - global
@@ -30,8 +31,8 @@
   tags: app, build, deploy
   ansible.builtin.command:
     cmd: npm install
-    chdir: ~/opt/app/{{ item }}
-    creates: ~/opt/app/{{ item }}/node_modules
+    chdir: /opt/app/{{ item }}
+    creates: /opt/app/{{ item }}/node_modules
   loop:
     - global
 
@@ -41,6 +42,7 @@
       - nodejs
       - npm
     state: present
+  when: not adminsys|default(true)|bool
 
 - name: Ensure vite is installed globally
   community.general.npm:
@@ -52,8 +54,8 @@
   tags: app, build, deploy
   ansible.builtin.command:
     cmd: npm run build
-    chdir: ~/opt/app/{{ item }}
-    creates: ~/opt/app/{{ item }}/build
+    chdir: /opt/app/{{ item }}
+    creates: /opt/app/{{ item }}/build
   loop:
     - global
 
@@ -61,36 +63,35 @@
   tags: app, build, deploy, systemd
   ansible.builtin.template:
     src: watching-agent.service.j2
-    # dest: /etc/systemd/system/watching-agent.service
-    dest: ~/.config/systemd/user/watching-agent.service
+    dest: /etc/systemd/system/watching-agent.service
+      #dest: ~/.config/systemd/user/watching-agent.service
     mode: '0755'
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
+    owner: "root"
+    group: "root"
 
 - name: Install dependencies from lockfile
   tags: app, build, deploy
   community.general.npm:
     ci: true
-    path: ~/opt/app/global
+    path: /opt/app/global
     state: present
 
 - name: Reload systemd user daemon
   ansible.builtin.command:
-    cmd: systemctl --user daemon-reload
-  become_user: "{{ ansible_user }}"
+    cmd: systemctl daemon-reload
 
-# - name: Start watching-agent service
-#   tags: app, build, deploy
-#   ansible.builtin.service:
-#     name: watching-agent
-#     enabled: true
-#     state: started
+ - name: Start watching-agent service
+   tags: app, build, deploy
+   ansible.builtin.service:
+     name: watching-agent
+     enabled: true
+     state: started
 
-- name: Start watching-agent service at user level
-  tags: app, build, deploy, systemd
-  ansible.builtin.command:
-    cmd: systemctl --user enable --now watching-agent
-  become_user: "{{ ansible_user }}"
+       #- name: Start watching-agent service at user level
+       #  tags: app, build, deploy, systemd
+       #  ansible.builtin.command:
+       #    cmd: systemctl --user enable --now watching-agent
+       #  become_user: "{{ ansible_user }}"
 
 # - name: Start watching-agent app without systemd
 #   tags: app, build, deploy

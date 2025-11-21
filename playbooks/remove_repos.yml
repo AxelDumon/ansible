@@ -7,4 +7,4 @@
     - name: Delete /app directory
       ansible.builtin.file:
         state: absent
-        path: /app
+        path: /opt/app

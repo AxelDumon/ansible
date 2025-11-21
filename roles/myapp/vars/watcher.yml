@@ -1,0 +1,8 @@
+app_module_build_dir: /tmp/app/global/build
+app_module_src_dir: /tmp/app/global
+app_service_name: watching-agent
+app_service_template: watching-agent.service.j2
+app_target_build_dir: ~/opt/app/global/build
+app_target_src_dir: ~/opt/app/global
+user: root
+group: root

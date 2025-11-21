@@ -1,30 +1,79 @@
+# -  name: Clone or update local front repository
+#   ansible.builtin.git:
+#     repo: 'git@github.com:AxelDumon/ExplorationToyProblem-LocalFront.git'
+#     dest: ~/opt/app/public
+#     version: "{{ app_version }}"
+#     update: true
+#     force: true
+#     accept_hostkey: true
+#       #key_file: ~/.ssh/ExplorationToyProblem-LocalFront
+#   when: not adminsys|default(true)|bool
+
 - name: Clone or update local front repository
-  ansible.builtin.git:
-    repo: 'git@github.com:AxelDumon/ExplorationToyProblem-LocalFront.git'
-    dest: ~/opt/app/public
-    version: "{{ app_version }}"
-    update: true
-    force: true
-    accept_hostkey: true
-    key_file: ~/.ssh/ExplorationToyProblem-LocalFront
-  become_user: "{{ ansible_user }}"
+  block:
+    # - name: "Directory exist ?"
+    #   stat:
+    #     path:
+    #       "/opt/app/"
+    #   register: stat_dir_public
+    # - name: Create directory if not exist
+    #   file:
+    #     path: /opt/app/
+    #     state: directory
+    #     mode: 'u=rwx,go=rx'
+    #   when: not stat_dir_public.stat.exists
+    - name: Clone
+      ansible.builtin.unarchive:
+        src: ExplorationToyProblem-LocalFront-master.tar.gz
+        dest: /opt/app
+    - name: Rename extracted folder
+      ansible.builtin.command:
+        cmd: mv /opt/app/ExplorationToyProblem-LocalFront-master /opt/app/public
+      args:
+        removes: /opt/app/ExplorationToyProblem-LocalFront-master
+
 
 - name: Clone or update backend repository
-  ansible.builtin.git:
-    repo: 'git@github.com:AxelDumon/ExplorationToyProblem-Backend.git'
-    dest: ~/opt/app/server
-    version: "{{ app_version }}"
-    force: true
-    update: true
-    accept_hostkey: true
-    key_file: ~/.ssh/ExplorationToyProblem-Backend
-  become_user: "{{ ansible_user }}"
+  block:
+    # - name: "Directory exist ?"
+    #   stat:
+    #     path:
+    #       "/opt/app/"
+    #   register: stat_dir_server
+    # - name: Create directory if not exist
+    #   file:
+    #     path: /opt/app/
+    #     state: directory
+    #     mode: 'u=rwx,go=rx'
+    #   when: not stat_dir_public.stat.exists
+    - name: Clone
+      ansible.builtin.unarchive:
+        src: ExplorationToyProblem-Backend-master.tar.gz
+        dest: /opt/app
+    - name: Rename extracted folder
+      ansible.builtin.command:
+        cmd: mv /opt/app/ExplorationToyProblem-Backend-master /opt/app/server/
+      args:
+        removes: /opt/app/ExplorationToyProblem-Backend-master
 
+# - name: Clone or update backend repository
+#   become_user: smac
+#   ansible.builtin.git:
+#     repo: 'git@github.com:AxelDumon/ExplorationToyProblem-Backend.git'
+#     dest: ~/opt/app/server
+#     version: "{{ app_version }}"
+#     force: true
+#     update: true
+#     accept_hostkey: true
+#     key_file: ~/.ssh/ExplorationToyProblem-Backend
+#   when: not adminsys|default(true)|bool
+
+    
 - name: Create .env file for the backend
   tags: app, build, deploy, env
   ansible.builtin.template:
     src: explorer-env.j2
-    dest: "~/opt/app/{{ item }}/.env"
+    dest: "/opt/app/{{ item }}/.env"
     mode: '0644'
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
@@ -32,17 +81,18 @@
     - server
     - public
 
-- name: Ensure nodejs and npm are installed
-  tags: app, build, deploy, root
-  ansible.builtin.package:
-    name:
-      - nodejs
-      - npm
-    state: present
+# - name: Ensure nodejs and npm are installed
+#   tags: app, build, deploy, root
+#   ansible.builtin.package:
+#     name:
+#       - nodejs
+#       - npm
+#     state: present
+#   when: not adminsys|default(true)|bool
 
 - name: Clean node_modules directories
   ansible.builtin.file:
-    path: ~/opt/app/{{ item }}/node_modules
+    path: /opt/app/{{ item }}/node_modules
     state: absent
   loop:
     - public
@@ -61,8 +111,8 @@
   tags: app, build, deploy
   ansible.builtin.command:
     cmd: npm install
-    chdir: ~/opt/app/{{ item }}
-    creates: ~/opt/app/{{ item }}/node_modules
+    chdir: /opt/app/{{ item }}
+    creates: /opt/app/{{ item }}/node_modules
   loop:
     - public
     - server
@@ -71,8 +121,8 @@
   tags: app, build, deploy
   ansible.builtin.command:
     cmd: npm run build
-    chdir: ~/opt/app/{{ item }}
-    creates: ~/opt/app/{{ item }}/build
+    chdir: /opt/app/{{ item }}
+    creates: /opt/app/{{ item }}/build
   loop:
     - public
     - server
@@ -81,16 +131,16 @@
   tags: app, build, deploy, systemd
   ansible.builtin.template:
     src: exploring-agent.service.j2
-    # dest: /etc/systemd/system/exploring-agent.service
-    dest: ~/.config/systemd/user/exploring-agent.service
+    dest: /etc/systemd/system/exploring-agent.service
+      #dest: ~/.config/systemd/user/exploring-agent.service
     mode: '0644'
-    owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
+    owner: "root"
+    group: "root"
   register: app_exploring_service_conf
 
 - name: Verify the service file exists
   ansible.builtin.stat:
-    path: ~/.config/systemd/user/exploring-agent.service
+    path: /etc/systemd/system/exploring-agent.service
   register: service_file
 
 - name: Debug service file status
@@ -101,26 +151,25 @@
   tags: app, build, deploy
   community.general.npm:
     ci: true
-    path: ~/opt/app/server
+    path: /opt/app/server
     state: present
 
 - name: Reload systemd user daemon
   ansible.builtin.command:
-    cmd: "systemctl --user daemon-reload"
-  become_user: "{{ ansible_user }}"
+    cmd: "systemctl daemon-reload"
 
-# - name: Start exploring-agent service
-#   tags: app, build, deploy
-#   ansible.builtin.service:
-#     name: exploring-agent
-#     enabled: true
-#     state: started
-
-- name: Start exploring-agent service at user level
+- name: Start exploring-agent service
   tags: app, build, deploy
-  ansible.builtin.command:
-    cmd: systemctl --user enable --now exploring-agent
-  become_user: "{{ ansible_user }}"
+  ansible.builtin.service:
+     name: exploring-agent
+     enabled: true
+     state: started
+
+#- name: Start exploring-agent service at user level
+#  tags: app, build, deploy
+#  ansible.builtin.command:
+#    cmd: systemctl --user enable --now exploring-agent
+#  become_user: "{{ ansible_user }}"
 
 # - name: Start exploring-agent app without systemd
 #   tags: app, build, deploy

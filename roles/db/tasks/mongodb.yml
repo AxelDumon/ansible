@@ -11,42 +11,139 @@
       loop:
         - gnupg ##########
         - curl ##########
+
     - name: Add mongo ppa key
       ansible.builtin.apt_key:
         url: https://www.mongodb.org/static/pgp/server-8.0.asc
         state: present
+        keyring: /usr/share/keyrings/mongodb-server-8.0.gpg
+
     - name: Add Mongo sources list
       ansible.builtin.apt_repository:
-        repo: deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/{{ ansible_distribution | lower }} {{ ansible_distribution_release }}/mongodb-org/8.0 multiverse
+#>>>>
+        #repo: deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/{{ ansible_distribution | lower }} {{ ansible_distribution_release }}/mongodb-org/8.0 multiverse
+        repo: deb [ signed-by=/usr/share/keyrings/mongodb-server-8.0.gpg arch=amd64,arm64 ] https://repo.mongodb.org/apt/{{ ansible_distribution | lower }} {{ ansible_distribution_release }}/mongodb-org/8.0 main
+#<<<<
         state: present
         filename: mongodb-org-8.0
+
     - name: Install MongoDB
       ansible.builtin.apt:
         name: mongodb-org ##########
         state: present
         update_cache: true
       notify: Restart MongoDB
+    
+    - name: Ensure the need files exist and configure local mongod.conf
+      block:
+
+      - name: Create MongoDB log directory for local instance (if it doesn't exist)
+        ansible.builtin.file:
+          path: /var/log/mongodb
+          state: directory
+          owner: mongodb
+          group: mongodb
+          mode: '0755'
+          recurse: true
+
+      - name: Create MongoDB data directory for local instance (if it doesn't exist)
+        ansible.builtin.file:
+          path: /var/lib/mongodb
+          state: directory
+          owner: mongodb
+          group: mongodb
+          mode: '0755'
+          recurse: true
+
+      - name: Look for existing mongod.conf file
+        ansible.builtin.stat:
+          path: /etc/mongod.conf
+        register: mongod_conf_stat
+
+      - name: Modify the local mongodb instance configuration (if it exists)
+        ansible.builtin.lineinfile:
+          path: /etc/mongod.conf
+          regexp: '#replication:'
+          line: |
+          replication:
+            replSetName: "localRset"
+          owner: mongodb
+          group: mongodb
+          mode: '0644'
+        notify: Restart MongoDB
+        when: mongod_conf_stat.stat.exists and
+              lookup('file', '/etc/mongod.conf') | regex_search('replSetName:') is not defined
+      
+      - name: Create the local mongodb instance configuration (if it doesn't exist)
+        template:
+          src: mongod_local.conf.j2
+          dest: /etc/mongod.conf
+          owner: mongodb
+          group: mongodb
+          mode: '0644'
+        notify: Restart MongoDB
+        when: not mongod_conf_stat.stat.exists
+
+      - name: Create MongoDB systemd override directory
+        ansible.builtin.file:
+          path: /etc/systemd/system/mongod.service.d
+          state: directory
+          mode: '0744'
+          owner: root ########
+          group: root ########
+
+    - name: Edit systemctl ExecStart line to include config file
+      ansible.builtin.copy:
+        dest: /etc/systemd/system/mongod.service.d/override.conf
+        content: |
+          [Service]
+          ExecStart=
+          ExecStart=/usr/bin/mongod --config /etc/mongod.conf
+        owner: root ########
+        group: root ########
+        mode: '0644'
+      notify: reload_systemd
+
     - name: Install python3-pip package
       ansible.builtin.apt:
         name: "python3-pip" ################
-        force_apt_get: True
+        force_apt_get: true
+
+#>>>>
+   #- name: Install the latest pymongo package
+   #   ansible.builtin.pip: 
+   #     name: pymongo ################
+   #     state: latest
+   #     break_system_packages: true
+   #     # use_mirrors: no
     - name: Install the latest pymongo package
-      ansible.builtin.pip: 
-        name: pymongo ################
-        state: latest
-        break_system_packages: true
-        # use_mirrors: no
+      command: pip3 install --upgrade pymongo --break-system-packages
+      tags: pip
+#<<<<
+
   rescue:
     - name: Fail if MongoDB installation fails
       ansible.builtin.fail:
         msg: "MongoDB installation failed."
 
-- name: Ensure the local MongoDB instance is started and enabled
+- name: Ensure the local MongoDB instance is enabled
   tags: db, mongodb, install
   ansible.builtin.systemd:
     name: mongod ##########
     state: started
     enabled: true
+
+- name: Check if replica set already initialized
+  shell: |
+    mongosh --quiet --eval "rs.status().ok" || echo "0"
+  register: rs_status
+  changed_when: false
+
+- name: Initialize replica set for local MongoDB instance if not already initialized
+  ansible.builtin.command:
+    cmd: mongosh --quiet --port 27017 --eval 'rs.initiate();'
+  when: rs_status.stdout != "1"
+
 - name: Wait for local MongoDB instance to be ready
   tags: db, mongodb, install
   become: true
@@ -102,6 +199,10 @@
   tags: db, mongodb, config
   become: true
   block:
+    #- name: Debug regex_findall result for MongoDB nodes
+    #  ansible.builtin.debug:
+    #    msg: "{{ hosts_file.content | b64decode | regex_findall('agent[0-9]{3}', multiline=True, ignorecase=True) }}"
+
     - name: Debug replica set members with mongodb port
       ansible.builtin.debug:
         msg: "{{ db_nodes | map('regex_replace', '(:27018)?$', ':27018') | list }}"
@@ -121,7 +222,7 @@
         replica_set: rs0 ##########
         # members: "{{ db_nodes | list }}"
         members: "{{ db_nodes | map('regex_replace', '(:27018)?$', ':27018') | list }}" ##########
-      when: inventory_hostname == groups['exploringAgents'][0]
+      when: inventory_hostname == groups['all'][0]
 
     - name: Wait for the replicaset to stabilize
       community.mongodb.mongodb_status:
@@ -130,9 +231,9 @@
         poll: 5
         interval: 10
       register: rs_status_result
-      when: inventory_hostname == groups['exploringAgents'][0]
+      when: inventory_hostname == groups['all'][0]
 
     - name: Debug replica set status
       ansible.builtin.debug:
         var: rs_status_result
-      when: inventory_hostname == groups['exploringAgents'][0]
+      when: inventory_hostname == groups['all'][0]

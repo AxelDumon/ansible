@@ -1,0 +1,138 @@
+---
+- name: Install MongoDB on Ubuntu
+  tags: db, mongodb, install
+  block:
+    - name: Install prerequisites for MongoDB
+      become: true
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: true
+      loop:
+        - gnupg ##########
+        - curl ##########
+    - name: Add mongo ppa key
+      ansible.builtin.apt_key:
+        url: https://www.mongodb.org/static/pgp/server-8.0.asc
+        state: present
+    - name: Add Mongo sources list
+      ansible.builtin.apt_repository:
+        repo: deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/{{ ansible_distribution | lower }} {{ ansible_distribution_release }}/mongodb-org/8.0 multiverse
+        state: present
+        filename: mongodb-org-8.0
+    - name: Install MongoDB
+      ansible.builtin.apt:
+        name: mongodb-org ##########
+        state: present
+        update_cache: true
+      notify: Restart MongoDB
+    - name: Install python3-pip package
+      ansible.builtin.apt:
+        name: "python3-pip" ################
+        force_apt_get: True
+    - name: Install the latest pymongo package
+      ansible.builtin.pip: 
+        name: pymongo ################
+        state: latest
+        break_system_packages: true
+        # use_mirrors: no
+  rescue:
+    - name: Fail if MongoDB installation fails
+      ansible.builtin.fail:
+        msg: "MongoDB installation failed."
+
+- name: Ensure the local MongoDB instance is started and enabled
+  tags: db, mongodb, install
+  ansible.builtin.systemd:
+    name: mongod ##########
+    state: started
+    enabled: true
+- name: Wait for local MongoDB instance to be ready
+  tags: db, mongodb, install
+  become: true
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: 27017
+    delay: 5
+    timeout: 30
+
+- name: Configure MongoDB replica set instance
+  tags: db, mongodb, confign, install
+  block:
+    - name: Create MongoDB data directory for port 27018
+      ansible.builtin.file:
+        path: /var/lib/mongodb27018
+        state: directory
+        owner: mongodb
+        group: mongodb
+        mode: '0755'
+    - name: Create MongoDB log directory for port 27018
+      ansible.builtin.file:
+        path: /var/log/mongodb27018
+        state: directory
+        owner: mongodb
+        group: mongodb
+        mode: '0755'
+    - name: Create MongoDB configuration file for replica set
+      ansible.builtin.template:
+        src: mongodb27018.conf.j2
+        dest: /etc/mongodb27018.conf
+        owner: mongodb
+        group: mongodb
+        mode: '0644'
+    - name: Create systemd service file for MongoDB on port 27018
+      ansible.builtin.template:
+        src: mongod-27018.service.j2
+        dest: /etc/systemd/system/mongod27018.service
+        owner: root ########
+        group: root ########
+        mode: '0644'
+      notify: reload_systemd
+    - name: Start MongoDB instance on port 27018
+      ansible.builtin.systemd:
+        name: mongod27018
+        state: started
+        enabled: true
+  rescue:
+    - name: Fail if MongoDB replica set configuration fails
+      ansible.builtin.fail:
+        msg: "Failed to configure MongoDB replica set instance."
+
+- name: Configure MongoDB replica set
+  tags: db, mongodb, config
+  become: true
+  block:
+    - name: Debug replica set members with mongodb port
+      ansible.builtin.debug:
+        msg: "{{ db_nodes | map('regex_replace', '(:27018)?$', ':27018') | list }}"
+
+    - name: Wait for all replica MongoDB nodes to be ready
+      ansible.builtin.wait_for:
+        host: "{{ item }}"
+        port: 27018 ##########
+        delay: 5
+        timeout: 300
+      loop: "{{ db_nodes }}"
+
+    - name: Initiate MongoDB replica set
+      community.mongodb.mongodb_replicaset:
+        login_host: localhost
+        login_port: 27018
+        replica_set: rs0 ##########
+        # members: "{{ db_nodes | list }}"
+        members: "{{ db_nodes | map('regex_replace', '(:27018)?$', ':27018') | list }}" ##########
+      when: inventory_hostname == groups['exploringAgents'][0]
+
+    - name: Wait for the replicaset to stabilize
+      community.mongodb.mongodb_status:
+        replica_set: "rs0" ##########
+        login_port: 27018 ##########
+        poll: 5
+        interval: 10
+      register: rs_status_result
+      when: inventory_hostname == groups['exploringAgents'][0]
+
+    - name: Debug replica set status
+      ansible.builtin.debug:
+        var: rs_status_result
+      when: inventory_hostname == groups['exploringAgents'][0]

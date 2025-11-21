@@ -14,13 +14,12 @@
       - "Distribution: {{ os_distribution }}"
       - "Version: {{ os_version }}"
 
-- name: Append each host's IP to agents_dict with "agentN"
+- name: Append each host's IP to db_nodes with ips
   ansible.builtin.set_fact:
-    db_nodes: "{{ db_nodes | default([]) + [hostvars[item].ansible_host] }}"
+    db_nodes: "{{ db_nodes | default([]) + [(hostvars[item].ansible_host)] }}"
   with_items: "{{ groups['all'] }}"
   loop_control:
-    index_var: item_index
-  failed_when: db_nodes | length == 0
+    index_var: item_index  # Provides the index of the current item in the loop
 
 - name: Debug db_nodes fact
   tags: debug
@@ -33,7 +32,7 @@
     db_name: "{{ db_name | default('mongodb') }}"
 
 - name: Include MongoDB installation tasks
-  tags: db, mongodb, install, config
+  tags: db, mongodb, install, config, pip
   ansible.builtin.include_tasks: mongodb.yml
   when: db_name == 'mongodb'
 

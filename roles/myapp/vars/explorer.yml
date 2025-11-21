@@ -1,0 +1,8 @@
+app_module_build_dir: /tmp/app/server/build
+app_module_src_dir: /tmp/app/server
+app_service_name: exploring-agent
+app_service_template: exploring-agent.service.j2
+app_target_build_dir: ~/opt/app/server/build
+app_target_src_dir: ~/opt/app/server
+user: root
+group: root

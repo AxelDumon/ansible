@@ -1,11 +1,11 @@
-- name: Install needed packages
-  tags: app, setup, prerequisites
-  ansible.builtin.package:
-    name:
-      - git
-      - npm
-      - nodejs
-    state: present
+#- name: Install needed packages
+#  tags: app, setup, prerequisites
+#  ansible.builtin.package:
+#    name:
+#      - git
+#      - npm
+#      - nodejs
+#    state: present
 
 - name: Install TypeScript globally if not present
   community.general.npm:
@@ -104,7 +104,6 @@
     - ExplorationToyProblem-Backend
     - ExplorationToyProblem-LocalFront
     - ExplorationToyProblem-GlobalFront
-  become_user: "{{ ansible_user }}"
 
 - name: Ensure loginctl user-session exists
   ansible.builtin.command:
@@ -112,6 +111,7 @@
     cmd: "loginctl enable-linger {{ ansible_user }}"
     creates: "/var/lib/systemd/linger/{{ ansible_user }}"
   become_user: "{{ ansible_user }}"
+  when: not adminsys|default(true)|bool
 
 - name: Create all the intermediates subdirectories for systemd user services
   ansible.builtin.file:
@@ -120,6 +120,13 @@
     mode: '0755'
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
+  when: not adminsys|default(true)|bool
+
+- name: Create directory if not exist
+  ansible.builtin.file:
+    path: /opt/app/
+    state: directory
+    mode: 'u=rwx,go=rx'
 
 - name: Deploy explorer module
   tags: app, deploy, explorer

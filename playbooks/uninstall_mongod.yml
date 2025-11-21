@@ -1,0 +1,55 @@
+---
+- name: Uninstall MongoDB from all database nodes
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Stop MongoDB service
+      ansible.builtin.systemd:
+        name: mongod
+        state: stopped
+        enabled: false
+
+    - name: Uninstall MongoDB package
+      ansible.builtin.package:
+        name: mongodb-org
+        state: absent
+
+    - name: Remove MongoDB data and log directories
+      ansible.builtin.file:
+        path: /var/log/mongodb
+        state: absent
+
+    - name: Remove MongoDB configuration file
+      ansible.builtin.file:
+        path: /etc/mongod.conf
+        state: absent
+
+    - name: Remove MongoDB systemd service file
+      ansible.builtin.file:
+        path: /etc/systemd/system/mongod.service
+        state: absent
+
+    - name: Delete MongoDB data directory
+      ansible.builtin.file:
+        path: /var/lib/mongodb
+        state: absent
+
+    - name: Reload systemd to apply changes
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Verify MongoDB uninstallation
+      ansible.builtin.shell: |
+        if systemctl is-active --quiet mongod; then
+          echo "MongoDB service is still running."
+          exit 1
+        fi
+        if rpm -q mongodb-org; then
+          echo "MongoDB package is still installed."
+          exit 1
+        fi
+        echo "MongoDB uninstalled successfully."
+      register: uninstall_check
+      failed_when: uninstall_check.rc != 0
+      changed_when: false

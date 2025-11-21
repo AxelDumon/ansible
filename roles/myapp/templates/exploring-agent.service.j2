@@ -1,0 +1,19 @@
+[Unit]
+Description=Exploring Agent Application
+After=network.target
+
+[Service]
+ExecStart=concurrently --names "front,server" "npm start --prefix {{ frontend_dir | default('public')}}" "npm start --prefix {{ backend_dir | default('server') }}"
+WorkingDirectory={{ working_dir | default('~/opt/app') }}
+Restart=always
+{# StandardOutput=syslog #}
+{# StandardError=syslog #}
+StandardOutput=journal
+StandardError=journal
+{# User={{ service_user | default('root') }} #}
+Environment=NODE_ENV=production PORT=80
+{# EnvironmentFile={{ env_file | default('/app/.env') }} #}
+
+[Install]
+WantedBy=default.target
+{# WantedBy=multi-user.target #}
