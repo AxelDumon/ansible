@@ -22,7 +22,7 @@
     #     state: directory
     #     mode: 'u=rwx,go=rx'
     #   when: not stat_dir_public.stat.exists
-    - name: Clone
+    - name: Unarchive frontend
       ansible.builtin.unarchive:
         src: ExplorationToyProblem-LocalFront-master.tar.gz
         dest: /opt/app
@@ -46,7 +46,7 @@
     #     state: directory
     #     mode: 'u=rwx,go=rx'
     #   when: not stat_dir_public.stat.exists
-    - name: Clone
+    - name: Unarchive backend
       ansible.builtin.unarchive:
         src: ExplorationToyProblem-Backend-master.tar.gz
         dest: /opt/app
@@ -122,7 +122,7 @@
   ansible.builtin.command:
     cmd: npm run build
     chdir: /opt/app/{{ item }}
-    creates: /opt/app/{{ item }}/build
+    # creates: /opt/app/{{ item }}/build
   loop:
     - public
     - server
@@ -154,9 +154,16 @@
     path: /opt/app/server
     state: present
 
-- name: Reload systemd user daemon
+- name: Reload systemd daemon
   ansible.builtin.command:
     cmd: "systemctl daemon-reload"
+
+- name: Restart exploring-agent service if configuration changed
+  tags: app, build, deploy
+  ansible.builtin.service:
+     name: exploring-agent
+     state: restarted
+  # when: app_exploring_service_conf.changed
 
 - name: Start exploring-agent service
   tags: app, build, deploy

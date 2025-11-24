@@ -1,0 +1,12 @@
+---
+- name: Reload the systemd services
+  hosts: all
+  tasks:
+    - name: Reload systemd daemon
+      ansible.builtin.command:
+        cmd: "systemctl daemon-reload"
+    
+    - name: Restart exploring-agent service
+      ansible.builtin.service:
+         name: exploring-agent
+         state: restarted
