@@ -5,4 +5,4 @@
   roles:
     - role: db
       vars:
-        db_name: mongodb
+        db_name: couchdb
