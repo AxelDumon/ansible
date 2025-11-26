@@ -2,6 +2,16 @@
   ansible.builtin.set_fact:
     agents_list: "{{ lookup('file', '/etc/hosts') | split('\n') | regex_findall('agent[0-9]{3}', multiline=True, ignorecase=True) [:simulation_count] }}"
 
+- name: Wait for simulation API to be available
+  ansible.builtin.uri:
+    url: "{{ simulation_api_uri }}/api/agents/is-exploring"
+    method: GET
+    status_code: 200
+  register: result
+  retries: 10
+  delay: 5
+  until: result.status == 200
+
 - name: Run simulation for agent {{ simulation_number }}
   ansible.builtin.uri:
     url: "http://{{ item }}:{{ simulation_api_port }}/api/explore"

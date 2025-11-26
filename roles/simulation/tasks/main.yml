@@ -1,9 +1,9 @@
-- name: Update .env file with simulation parameters
-  ansible.builtin.lineinfile:
-    path: /app/server/.env
-    regexp: '^SIMULATION_NAME='
-    line: "SIMULATION_NAME={{ simulation_name }}"
-    create: true
+# - name: Update .env file with simulation parameters
+#   ansible.builtin.lineinfile:
+#     path: /app/server/.env
+#     regexp: '^SIMULATION_NAME='
+#     line: "SIMULATION_NAME={{ simulation_name }}"
+#     create: true
 
 - name: Set simulation api uri
   ansible.builtin.set_fact:
@@ -14,10 +14,10 @@
     url: "{{ simulation_api_uri }}/api/agents/is-exploring"
     method: GET
     status_code: 200
-    register: result
-    retries: 10
-    delay: 5
-    until: result.status == 200
+  register: result
+  retries: 10
+  delay: 5
+  until: result.status == 200
 
 - name: Prepare database before starting simulations
   ansible.builtin.uri:

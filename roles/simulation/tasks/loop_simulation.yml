@@ -1,0 +1,9 @@
+- name: Debug the number of simulations
+  ansible.builtin.debug:
+    msg: "Starting simulation number {{ simulation_number }} with {{ repetition_number }} tries"
+
+- name: Include run_simulation tasks for each simulation with N repetitions
+  ansible.builtin.include_tasks: run_simulation.yml
+  loop: "{{ range(1, repetition_number + 1) | list }}"
+  loop_control:
+    loop_var: repetition_count
