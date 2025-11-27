@@ -1,0 +1,15 @@
+---
+- name: Reconfiguration of the application
+  hosts: all
+  gather_facts: false
+  become: true
+  vars:
+    app_config_path: "/opt/app"
+  tasks:
+    - name: Remove old repository
+      ansible.builtin.file:
+        state: absent
+        path: "{{ app_config_path }}"
+
+    # After that, you can configure the app again as normal
+    # It is just needed to restart the desired services after that

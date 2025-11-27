@@ -1,0 +1,75 @@
+---
+- name: Uninstall CouchDB from all database nodes
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    couchdb_paths:
+      - /opt/couchdb
+      - /etc/couchdb
+      - /usr/lib/couchdb
+      - /usr/share/couchdb
+      - /var/log/couchdb
+      - /var/lib/couchdb
+      - /var/run/couchdb
+      - /etc/default/couchdb
+      - /usr/share/keyrings/couchdb-archive-keyring.gpg
+  tasks:
+    - name: Stop CouchDB service
+      ansible.builtin.service:
+        name: couchdb
+        state: stopped
+      ignore_errors: true
+
+    - name: Disable CouchDB service
+      ansible.builtin.service:
+        name: couchdb
+        enabled: false
+      ignore_errors: true
+
+    - name: Purge CouchDB package
+      ansible.builtin.apt:
+        name: couchdb
+        state: absent
+        purge: true
+        update_cache: true
+      register: purge_result
+      ignore_errors: true
+
+    - name: Remove CouchDB apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/couchdb-archive-keyring.gpg] https://apache.jfrog.io/artifactory/couchdb-deb/ {{ ansible_distribution_release }} main"
+        state: absent
+      ignore_errors: true
+
+    - name: Remove CouchDB GPG key
+      ansible.builtin.file:
+        path: /usr/share/keyrings/couchdb-archive-keyring.gpg
+        state: absent
+
+    - name: Remove CouchDB directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop: "{{ couchdb_paths }}"
+      ignore_errors: true
+
+    - name: Purge debconf answers for couchdb
+      ansible.builtin.shell: |
+        printf 'PURGE\n' | debconf-communicate couchdb || true
+      changed_when: false
+      ignore_errors: true
+
+    - name: Autoremove unused packages
+      ansible.builtin.apt:
+        autoremove: true
+      ignore_errors: true
+
+    - name: Clean apt cache
+      ansible.builtin.apt:
+        autoclean: true
+      ignore_errors: true
+
+    - name: Report purge result
+      ansible.builtin.debug:
+        msg: "CouchDB uninstallation completed. Package removal result: {{ purge_result }}"

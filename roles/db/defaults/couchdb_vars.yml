@@ -1,6 +1,20 @@
-couchdb_erl_cookie: 8zplQ4cMBYma4y6
+---
+# defaults for couchdb role - override in playbook or inventory/group_vars
+couchdb_package: couchdb
+couchdb_version: "" # leave empty for latest or specify version like "3.2.2"
 couchdb_admin_user: admin
 couchdb_admin_password: password
+couchdb_erl_cookie: 8zplQ4cMBYma4y6
+couchdb_bind_address: 0.0.0.0
+couchdb_mode: "standalone"
+couchdb_nodes: []
+couchdb_repo_url: "https://apache.jfrog.io/artifactory/couchdb-deb/"
+couchdb_key_url: "https://couchdb.apache.org/repo/keys.asc"
+couchdb_keyring_path: "/usr/share/keyrings/couchdb-archive-keyring.gpg"
+couchdb_release_codename: "{{ ansible_distribution_release }}"
+couchdb_service_name: couchdb
+couchdb_port: 5984
+couchdb_wait_timeout: 60
 couchdb_q: 1
 couchdb_n: 1
 couchdb_max_history: 8

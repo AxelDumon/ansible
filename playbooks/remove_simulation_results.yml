@@ -1,0 +1,17 @@
+---
+- name: Remove simulation results file
+  hosts: all
+  gather_facts: false
+  vars:
+    simulation_results_path: "/tmp/exploration-default.json"
+  tasks:
+    - name: Check if simulation results file exists
+      ansible.builtin.stat:
+        path: "{{ simulation_results_path }}"
+      register: simulation_file_stat
+
+    - name: Remove simulation results file if it exists
+      ansible.builtin.file:
+        path: "{{ simulation_results_path }}"
+        state: absent
+      when: simulation_file_stat.stat.exists

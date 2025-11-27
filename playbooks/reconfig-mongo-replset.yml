@@ -1,0 +1,107 @@
+---
+- name: Reconfigure MongoDB replica set (force) to 5 voting members
+  hosts: localhost
+  gather_facts: false
+  vars:
+    # the node we will connect to with mongo shell (must be reachable)
+    target_node: "172.18.49.133"
+    mongo_port: 27018
+
+    all_hosts:
+      - "172.18.49.133:27018"
+      - "172.18.49.134:27018"
+      - "172.18.49.135:27018"
+      - "172.18.49.136:27018"
+      - "172.18.49.137:27018"
+      - "172.18.49.138:27018"
+      - "172.18.49.139:27018"
+      - "172.18.49.140:27018"
+      - "172.18.49.141:27018"
+      - "172.18.49.142:27018"
+      - "172.18.49.143:27018"
+      - "172.18.49.144:27018"
+      - "172.18.49.145:27018"
+      - "172.18.49.146:27018"
+      - "172.18.49.147:27018"
+      - "172.18.49.148:27018"
+      - "172.18.49.149:27018"
+      - "172.18.49.150:27018"
+      - "172.18.49.151:27018"
+      - "172.18.49.152:27018"
+      - "172.18.49.153:27018"
+      - "172.18.49.154:27018"
+      - "172.18.49.155:27018"
+      - "172.18.49.156:27018"
+      - "172.18.49.157:27018"
+      - "172.18.49.158:27018"
+      - "172.18.49.159:27018"
+      - "172.18.49.82:27018"
+      - "172.18.49.83:27018"
+      - "172.18.49.84:27018"
+      - "172.18.49.85:27018"
+      - "172.18.49.86:27018"
+      - "172.18.49.87:27018"
+      - "172.18.49.88:27018"
+      - "172.18.49.89:27018"
+      - "172.18.49.90:27018"
+      - "172.18.49.91:27018"
+      - "172.18.49.92:27018"
+      - "172.18.49.93:27018"
+      - "172.18.49.94:27018"
+      - "172.18.49.95:27018"
+      - "172.18.49.96:27018"
+      - "172.18.49.97:27018"
+      - "172.18.49.98:27018"
+      - "172.18.49.99:27018"
+      - "172.18.49.100:27018"
+      - "172.18.49.101:27018"
+      - "172.18.49.102:27018"
+      - "172.18.49.103:27018"
+
+    selected_hosts: "{{ all_hosts[:n] }}"
+
+    voting_hosts: "{{ selected_hosts[:5] }}"
+
+    # voting_hosts:
+    #   - "172.18.49.133:27018"
+    #   - "172.18.49.139:27018"
+    #   - "172.18.49.145:27018"
+    #   - "172.18.49.82:27018"
+    #   - "172.18.49.98:27018"
+
+  tasks:
+    - name: Build JS to reconfigure replica set
+      ansible.builtin.set_fact:
+        reconfig_js: |
+          var all_hosts = {{ all_hosts | to_json }};
+          var voting_hosts = {{ voting_hosts | to_json }};
+          function isVoting(h) { for (var i=0;i<voting_hosts.length;i++) if (voting_hosts[i]===h) return true; return false; }
+          var cfg = null;
+          try { cfg = rs.conf(); } catch(e) { print("warning rs.conf() failed: "+tojson(e)); }
+          var rsname = (cfg && cfg._id) ? cfg._id : "rs0";
+          var version = (cfg && cfg.version) ? cfg.version+1 : 1;
+          var members = [];
+          for (var i=0;i<all_hosts.length;i++) {
+            var h = all_hosts[i];
+            members.push({_id: i, host: h, priority: isVoting(h)?1:0, votes: isVoting(h)?1:0, hidden:false});
+          }
+          var newcfg = {_id: rsname, version: version, members: members};
+          print("Applying new config for " + rsname + " version " + version);
+          printjson(newcfg);
+          try { rs.reconfig(newcfg, {force:true}); print("rs.reconfig executed with {force:true}"); } catch (e) { print("rs.reconfig failed: "+tojson(e)); }
+
+    - name: Write reconfig script to temp file
+      ansible.builtin.copy:
+        dest: /tmp/reconfig_rs.js
+        content: "{{ reconfig_js }}"
+        mode: '0644'
+        group: 'smac'
+
+    - name: Run reconfig against target node
+      ansible.builtin.command: mongo --host {{ target_node }} --port {{ mongo_port }} /tmp/reconfig_rs.js
+      register: mongo_reconfig
+      ignore_errors: true
+
+    - name: Show output from mongo reconfig attempt
+      ansible.builtin.debug:
+        var: mongo_reconfig.stdout_lines

@@ -1,9 +1,25 @@
+[httpd]
+bind_address = {{ couchdb_bind_address }}
+port = {{ couchdb_port }}
+
+[couchdb]
+database_dir = /var/lib/couchdb
+view_index_dir = /var/lib/couchdb
+
+[chttpd]
+port = {{ couchdb_port }}
+bind_address = {{ couchdb_bind_address }}
+
 [admins]
-{{ couchdb_admin_user }} = {{ couchdb_admin_password }}
+{{ couchdb_admin_user }} = {{ couchdb_admin_password | quote }}
 
 [cluster]
 q = {{ couchdb_q }}
 n = {{ couchdb_n }}
+
+[log]
+level = info
+file = /var/log/couchdb/couch.log
 
 [replicator]
 max_history = {{ couchdb_max_history }}

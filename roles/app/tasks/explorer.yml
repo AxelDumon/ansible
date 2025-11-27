@@ -26,6 +26,8 @@
       ansible.builtin.unarchive:
         src: ExplorationToyProblem-LocalFront-master.tar.gz
         dest: /opt/app
+        group: smac
+        mode: '0775'
     - name: Rename extracted folder
       ansible.builtin.command:
         cmd: mv /opt/app/ExplorationToyProblem-LocalFront-master /opt/app/public
@@ -50,6 +52,8 @@
       ansible.builtin.unarchive:
         src: ExplorationToyProblem-Backend-master.tar.gz
         dest: /opt/app
+        group: smac
+        mode: '0775'
     - name: Rename extracted folder
       ansible.builtin.command:
         cmd: mv /opt/app/ExplorationToyProblem-Backend-master /opt/app/server/
@@ -68,15 +72,14 @@
 #     key_file: ~/.ssh/ExplorationToyProblem-Backend
 #   when: not adminsys|default(true)|bool
 
-    
 - name: Create .env file for the backend
   tags: app, build, deploy, env
   ansible.builtin.template:
     src: explorer-env.j2
     dest: "/opt/app/{{ item }}/.env"
-    mode: '0644'
+    mode: '0664'
     owner: "{{ ansible_user }}"
-    group: "{{ ansible_user }}"
+    group: "smac"
   loop:
     - server
     - public
@@ -171,14 +174,3 @@
      name: exploring-agent
      enabled: true
      state: started
-
-#- name: Start exploring-agent service at user level
-#  tags: app, build, deploy
-#  ansible.builtin.command:
-#    cmd: systemctl --user enable --now exploring-agent
-#  become_user: "{{ ansible_user }}"
-
-# - name: Start exploring-agent app without systemd
-#   tags: app, build, deploy
-#   ansible.builtin.command:
-#     cmd: concurrently --names "front,server" "npm start --prefix {{ frontend_dir | default('~/opt/app/public')}}" "npm start --prefix {{ backend_dir | default('~/opt/app/server') }}"

@@ -1,0 +1,6 @@
+%%# vm.args.j2 - minimal, Debian layout
+-name couchdb@{{ ansible_hostname }}
+-setcookie {{ couchdb_erl_cookie }}
+# extra args can be appended below
+# -kernel inet_dist_listen_min 9100
+# -kernel inet_dist_listen_max 9150

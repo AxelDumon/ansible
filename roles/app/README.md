@@ -1,31 +1,48 @@
-Role Name
+app role
 =========
 
-A brief description of the role goes here.
+Ce rôle permet de déployer l'application contenue dans le dossier "files". Pour cela il va mettre en place tout les outils nécessaire au fonctionnement de l'application.
 
 Requirements
 ------------
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+Il est nécessaire que les outils suivants soient installés :
+- git
+- node
+- npm
 
 Role Variables
 --------------
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+Il est possible de changer la version de l'application pour qu'elle utilise une base de données différentes. (Fonctionnalité retiré actuellement, car plus de pull via git)
 
-Dependencies
-------------
+Les variables utilisés pour configurer l'application sont les suivantes :
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+```
+app_base_port: 3000                  # Explorer(f&b) ;
+app_base_ws_port: 8080               # Explorer(f&b) ;
+app_base_app_port: 8000              # Explorer(f)   ;
+app_delay: 200                       # Explorer(f&b) ; Watcher(f&b)
+app_size: 40                         # Explorer(f&b) ; Watcher(f&b)
+app_base_mongo_port: 27018           # Explorer(b)   ;
+app_api_url: "http://localhost:3001" #               ; Watcher(f)
+app_db_name: "v2grid"
+app_mongo_replica_set_name: "rs0"
+app_version: "master"              # Possible versions : mongodb, couchdb, master
+```
 
 Example Playbook
 ----------------
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
-
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+```
+- name: App role test playbook
+  hosts: all
+  become: true
+  become_user: root
+  gather_facts: true
+  roles:
+    - role: app
+```
 
 License
 -------
@@ -35,4 +52,4 @@ BSD
 Author Information
 ------------------
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+nom : Axel Dumon

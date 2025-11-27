@@ -7,63 +7,105 @@
 - name: Install CouchDB on Ubuntu
   tags: db, couchdb, install
   block:
-    - name: Install prerequisites for CouchDB
+    # - name: Install prerequisites for CouchDB
+    #   become: true
+    #   ansible.builtin.apt:
+    #     name: "{{ item }}"
+    #     state: present
+    #     update_cache: true
+    #   loop:
+    #     - gnupg ##########
+    #     - curl ##########
+    #     - debconf-utils ##########
+
+    - name: Ensure keyring directory exists
       become: true
-      ansible.builtin.apt:
-        name: "{{ item }}"
+      ansible.builtin.file:
+        path: "{{ couchdb_keyring_path | dirname }}"
+        state: directory
+        mode: '0755'
+
+    - name: CouchDB GPG key to keyring
+      become: true
+      block:
+        - name: Download CouchDB GPG key
+          ansible.builtin.get_url:
+            url: "{{ couchdb_key_url }}"
+            dest: "/tmp/couchdb-keys.asc"
+            mode: '0644'
+            force: false
+
+        - name: Convert GPG key to keyring
+          ansible.builtin.command: >
+            gpg --batch --yes --dearmor -o {{ couchdb_keyring_path }} /tmp/couchdb-keys.asc
+          args:
+            creates: "{{ couchdb_keyring_path }}"
+
+    - name: Add apt repository for CouchDB
+      become: true
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by={{ couchdb_keyring_path }}] {{ couchdb_repo_url }} {{ couchdb_release_codename }} main"
         state: present
-        update_cache: true
-      loop:
-        - gnupg ##########
-        - curl ##########
-        - debconf-utils ##########
-    - name: Preconfigure CouchDB
+        filename: couchdb
+
+    - name: Preseed debconf answers for CouchDB installer
+      become: true
       ansible.builtin.debconf:
         name: couchdb
         question: "{{ item.question }}"
         value: "{{ item.value }}"
         vtype: "{{ item.vtype }}"
       loop:
-        - { question: "couchdb/bindaddress", value: "0.0.0.0", vtype: "string" }
-        - { question: "couchdb/mode", value: "standalone", vtype: "select" }
+        - { question: "couchdb/bindaddress", value: "{{ couchdb_bind_address }}", vtype: "string" }
+        - { question: "couchdb/mode", value: "{{ couchdb_mode }}", vtype: "select" }
         - { question: "couchdb/adminpass", value: "{{ couchdb_admin_password }}", vtype: "password" }
         - { question: "couchdb/adminpass_again", value: "{{ couchdb_admin_password }}", vtype: "password" }
         - { question: "couchdb/cookie", value: "{{ couchdb_erl_cookie }}", vtype: "string" }
+        - { question: "couchdb/nodename", value: "{{ ansible_fqdn }}", vtype: "string" }
+
+    - name: Ensure apt cache is up to date
       become: true
-    - name: Add CouchDB GPG key
-      ansible.builtin.shell:
-        cmd: "curl -fsSL https://couchdb.apache.org/repo/keys.asc | gpg --batch --yes --dearmor -o /usr/share/keyrings/couchdb-archive-keyring.gpg"
-      become: true
-    # - name: Add CouchDB ppa key
-    #   ansible.builtin.apt_key:
-    #     url: https://couchdb.apache.org/repo/keys.asc
-    #     state: present
-    - name: Add CouchDB sources list
-      ansible.builtin.apt_repository:
-        repo: deb [signed-by=/usr/share/keyrings/couchdb-archive-keyring.gpg] https://apache.jfrog.io/artifactory/couchdb-deb/ {{ ansible_distribution_release }} main
-        state: present
-      become: true
-    - name: Install CouchDB
       ansible.builtin.apt:
-        name: couchdb ##########
-        state: present
         update_cache: true
-      notify: Restart CouchDB
+        cache_valid_time: 3600
+
+    - name: Install CouchDB
+      become: true
+      ansible.builtin.apt:
+        name: "{{ couchdb_package }}{{ ('=' + couchdb_version) if couchdb_version | length > 0 else '' }}"
+        state: present
+      notify: restart_couchdb
+
+    - name: Ensure file /etc/couchdb/vm.args exists with correct cookie
+      become: true
+      ansible.builtin.template:
+        src: couchdb.vm.args.j2
+        dest: /etc/couchdb/vm.args
+        owner: couchdb
+        group: couchdb
+        mode: '0600'
+      notify: restart_couchdb
+
+    - name: Ensure /etc/couchdb/local.ini is present
+      become: true
+      ansible.builtin.template:
+        src: couchdb.ini.j2
+        dest: /etc/couchdb/local.ini
+        owner: couchdb
+        group: couchdb
+        mode: '0644'
+      notify: restart_couchdb
+
+    - name: Ensure CouchDB service is enabled and started
+      become: true
+      ansible.builtin.service:
+        name: "{{ couchdb_service_name }}"
+        enabled: true
+        state: started
   rescue:
     - name: Fail if CouchDB installation fails
       ansible.builtin.fail:
         msg: "CouchDB installation failed."
-
-- name: Configure Erlang magic cookie
-  ansible.builtin.lineinfile:
-    path: /opt/couchdb/etc/vm.args
-    line: '-setcookie {{ couchdb_erl_cookie }}'
-    state: present
-    create: true
-    owner: couchdb
-    group: couchdb
-    mode: '0600'
-  become: true
 
 - name: Configure CouchDB settings
   tags: db, couchdb, config
@@ -71,41 +113,42 @@
     - name: Copy configuration template for CouchDB
       ansible.builtin.template:
         src: couchdb.ini.j2
-        dest: /opt/couchdb/etc/local.ini
+        dest: /etc/couchdb/local.ini
         owner: couchdb
         group: couchdb
         mode: '0644'
       become: true
       notify: Restart CouchDB
 
-    - name: Wait for CouchDB to be ready
+    - name: Wait for CouchDB HTTP interface to be ready
       ansible.builtin.wait_for:
-        host: localhost
-        port: 5984
-        delay: 5
-        timeout: 30
+        host: 127.0.0.1
+        port: "{{ couchdb_port }}"
+        delay: 2
+        timeout: "{{ couchdb_wait_timeout }}"
 
-    - name: Save credentials
-      set_fact:
+    - name: Save credentials fact
+      ansible.builtin.set_fact:
         couchdb_credentials: "Basic {{ (couchdb_admin_user + ':' + couchdb_admin_password) | b64encode }}"
 
     - name: Put v2grid database in CouchDB
       tags: db, couchdb, config
       ansible.builtin.uri:
-        url: "http://localhost:5984/v2grid" ####
+        url: "http://127.0.0.1:{{ couchdb_port }}/v2grid"
         method: PUT
         headers:
           Content-Type: application/json
           Authorization: "{{ couchdb_credentials }}"
         status_code: [201, 412]
       register: create_db_result
+      ignore_errors: true
 
     - name: Set up replication between CouchDB nodes
       tags: db, couchdb, config
       block:
         - name: Set up replication to peers
           ansible.builtin.uri:
-            url: "http://localhost:5984/_replicator"
+            url: "http://127.0.0.1:{{ couchdb_port }}/_replicator"
             method: POST
             headers:
               Content-Type: application/json
@@ -113,10 +156,11 @@
             body_format: json
             body: |
               {
-                "source": "http://{{ couchdb_admin_user }}:{{ couchdb_admin_password }}@127.0.0.1:5984/v2grid",
-                "target": "http://{{ couchdb_admin_user }}:{{ couchdb_admin_password }}@{{ item }}:5984/v2grid",
+                "source": "http://{{ couchdb_admin_user }}:{{ couchdb_admin_password }}@127.0.0.1:{{ couchdb_port }}/v2grid",
+                "target": "http://{{ couchdb_admin_user }}:{{ couchdb_admin_password }}@{{ item }}:{{ couchdb_port }}/v2grid",
                 "continuous": true
               }
             status_code: 201
           loop: "{{ db_nodes }}"
       when: db_nodes is defined and db_nodes | length > 0
+      ignore_errors: true

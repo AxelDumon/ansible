@@ -1,22 +1,36 @@
-- name: Clone or update global front repository
-  ansible.builtin.git:
-    repo: 'git@github.com:AxelDumon/ExplorationToyProblem-GlobalFront.git'
-    dest: ~/opt/app/global
-    version: "{{ app_version }}"
-    update: true
-    force: true
-    accept_hostkey: true
-    key_file: ~/.ssh/ExplorationToyProblem-GlobalFront
-  when: not adminsys|default(true)|bool
+# - name: Clone or update global front repository
+#   ansible.builtin.git:
+#     repo: 'git@github.com:AxelDumon/ExplorationToyProblem-GlobalFront.git'
+#     dest: ~/opt/app/global
+#     version: "{{ app_version }}"
+#     update: true
+#     force: true
+#     accept_hostkey: true
+#     key_file: ~/.ssh/ExplorationToyProblem-GlobalFront
+#   when: not adminsys|default(true)|bool
+
+- name: Clone or update the GlobalFront repository
+  block:
+    - name: Unarchive frontend
+      ansible.builtin.unarchive:
+        src: ExplorationToyProblem-LocalFront-master.tar.gz
+        dest: /opt/app
+        group: smac
+        mode: '0775'
+    - name: Rename extracted folder
+      ansible.builtin.command:
+        cmd: mv /opt/app/ExplorationToyProblem-GlobalFront-master /opt/app/global
+      args:
+        removes: /opt/app/ExplorationToyProblem-GlobalFront-master
 
 - name: Create the .env file
   tags: app, build, deploy, env
   ansible.builtin.template:
     src: watcher-env.j2
     dest: "/opt/app/{{ item }}/.env"
-    mode: '0644'
+    mode: '0664'
     owner: "root"
-    group: "root"
+    group: "smac"
   loop:
     - global
 
@@ -36,13 +50,13 @@
   loop:
     - global
 
-- name: Ensure nodejs and npm are installed
-  ansible.builtin.package:
-    name:
-      - nodejs
-      - npm
-    state: present
-  when: not adminsys|default(true)|bool
+# - name: Ensure nodejs and npm are installed
+#   ansible.builtin.package:
+#     name:
+#       - nodejs
+#       - npm
+#     state: present
+#   when: not adminsys|default(true)|bool
 
 - name: Ensure vite is installed globally
   community.general.npm:
@@ -55,7 +69,7 @@
   ansible.builtin.command:
     cmd: npm run build
     chdir: /opt/app/{{ item }}
-    creates: /opt/app/{{ item }}/build
+    # creates: /opt/app/{{ item }}/build
   loop:
     - global
 
@@ -80,20 +94,9 @@
   ansible.builtin.command:
     cmd: systemctl daemon-reload
 
- - name: Start watching-agent service
-   tags: app, build, deploy
-   ansible.builtin.service:
-     name: watching-agent
-     enabled: true
-     state: started
-
-       #- name: Start watching-agent service at user level
-       #  tags: app, build, deploy, systemd
-       #  ansible.builtin.command:
-       #    cmd: systemctl --user enable --now watching-agent
-       #  become_user: "{{ ansible_user }}"
-
-# - name: Start watching-agent app without systemd
-#   tags: app, build, deploy
-#   ansible.builtin.command:
-#     cmd: npm start --prefix {{ app_target_src_dir | default('~/opt/app/global') }}
+- name: Start watching-agent service
+  tags: app, build, deploy
+  ansible.builtin.service:
+    name: watching-agent
+    enabled: true
+    state: started

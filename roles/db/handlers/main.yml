@@ -5,11 +5,14 @@
     state: restarted
     enabled: true
 - name: Reload systemd
-  ansible.builtin.systemd:
-    daemon_reload: true
+  become: true
+  ansible.builtin.command:
+    cmd: "systemctl daemon-reload"
   listen: reload_systemd
 - name: Restart CouchDB
-  ansible.builtin.systemd:
-    name: couchdb
+  become: true
+  ansible.builtin.service:
+    name: "{{ couchdb_service_name }}"
     state: restarted
+    enabled: true
   listen: restart_couchdb
