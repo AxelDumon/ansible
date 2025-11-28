@@ -9,25 +9,20 @@
   ansible.builtin.set_fact:
     simulation_api_uri: "http://{{ simulation_api_host }}:{{ simulation_api_port }}"
 
-- name: Wait for simulation API to be available
-  ansible.builtin.uri:
-    url: "{{ simulation_api_uri }}/api/agents/is-exploring"
-    method: GET
-    status_code: 200
-  register: result
-  retries: 10
-  delay: 5
-  until: result.status == 200
+- name: Set full_agents_list with IPs
+  ansible.builtin.set_fact:
+    full_agents_list: "{{ full_agents_list | default([]) + [(hostvars[item].ansible_host)] }}"
+  with_items: "{{ groups['all'] }}"
+  loop_control:
+    index_var: item_index
 
-- name: Prepare database before starting simulations
-  ansible.builtin.uri:
-    url: "{{ simulation_api_uri }}/api/init"
-    method: POST
-    status_code: 200
+- name: Load simulation parameters from params.json
+  ansible.builtin.set_fact:
+    all_sim_params: "{{ lookup('file', 'params.json') | from_json }}"
 
 - name: Simulation loop
-  ansible.builtin.include_tasks: run_simulation.yml
+  ansible.builtin.include_tasks: loop_simulation.yml
   when: inventory_hostname == groups['exploringAgents'][0]
-  loop: "{{ range(1, simulation_count + 1) | list }}"
+  loop: "{{ all_sim_params }}"
   loop_control:
-    loop_var: simulation_number
+    loop_var: simulation_params

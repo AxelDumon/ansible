@@ -1,16 +1,22 @@
-- name: Set agents list
-  ansible.builtin.set_fact:
-    agents_list: "{{ lookup('file', '/etc/hosts') | split('\n') | regex_findall('agent[0-9]{3}', multiline=True, ignorecase=True) [:simulation_count] }}"
-
 - name: Wait for simulation API to be available
   ansible.builtin.uri:
     url: "{{ simulation_api_uri }}/api/agents/is-exploring"
     method: GET
-    status_code: 200
-  register: result
+    return_content: true
+    timeout: 10
+  register: simulation_wait_result
   retries: 10
   delay: 5
-  until: result.status == 200
+  until: >-
+    (simulation_wait_result.status == 200)
+    and (simulation_wait_result.json is defined and (simulation_wait_result.json.isExploring | default(false) | bool))
+  failed_when: false
+
+- name: Prepare database before starting simulations
+  ansible.builtin.uri:
+    url: "{{ simulation_api_uri }}/api/init"
+    method: POST
+    status_code: 200
 
 - name: Run simulation for agent {{ simulation_number }}
   ansible.builtin.uri:
@@ -25,9 +31,9 @@
   ansible.builtin.uri:
     url: "http://{{ item }}:{{ simulation_api_port }}/api/agents/is-exploring"
     method: GET
-    status_code: 200
-    register: explore_result
-    retries: 60
-    delay: 10
-    until: explore_result.json.isExploring == false
+    return_content: true
+  register: explore_result
+  retries: 60
+  delay: 10
+  until: explore_result.json.isExploring == false
   loop: "{{ agents_list }}"

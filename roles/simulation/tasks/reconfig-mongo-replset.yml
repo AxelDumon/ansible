@@ -1,0 +1,80 @@
+- name: Reconfigure the mongo replica set
+  delegate_to: "{{ target_node }}"
+  block:
+    - name: Set all_hosts variable
+      ansible.builtin.set_fact:
+        all_hosts: "{{ all_hosts | default([]) + [(hostvars[item].ansible_host) + ':' + mongo_port|string] }}"
+      with_items: "{{ groups['all'] }}"
+      loop_control:
+        index_var: item_index
+
+    - name: Set selected_hosts variable (first 20 hosts)
+      ansible.builtin.set_fact:
+        selected_hosts: "{{ all_hosts[:40] }}"
+
+    - name: Set voting_hosts variable (first 5 hosts)
+      ansible.builtin.set_fact:
+        voting_hosts: "{{ selected_hosts[:5] }}"
+
+    - name: Build JS to reconfigure replica set
+      ansible.builtin.set_fact:
+        reconfig_js: |
+          var selected_hosts = {{ selected_hosts | to_json }};
+          var voting_hosts = {{ voting_hosts | to_json }};
+          function isVoting(h) { for (var i=0;i<voting_hosts.length;i++) if (voting_hosts[i]===h) return true; return false; }
+          var cfg = null;
+          try { cfg = rs.conf(); } catch(e) { print("warning rs.conf() failed: "+tojson(e)); }
+          var rsname = (cfg && cfg._id) ? cfg._id : "rs0";
+          var version = (cfg && cfg.version) ? cfg.version+1 : 1;
+
+          // get old conf IDs w/ maxId to generate them
+          var oldMembers = (cfg && cfg.members) ? cfg.members : [];
+          var hostToOldId = {};
+          var presentOldHosts = {};
+          var maxId = -1;
+          for (var i=0;i<oldMembers.length;i++) {
+            var m = oldMembers[i];
+            hostToOldId[m.host] = m._id;
+            presentOldHosts[m.host] = true;
+            if (m._id > maxId) maxId = m._id;
+          }
+
+          var members = [];
+          // Use IDs when possible else create one
+          for (var i=0;i<selected_hosts.length;i++) {
+            var h = selected_hosts[i];
+            var id;
+            if (hostToOldId.hasOwnProperty(h)) {
+              id = hostToOldId[h];
+            } else {
+              id = ++maxId;
+            }
+            members.push({_id: id, host: h, priority: isVoting(h) ? 1 : 0, votes: isVoting(h) ? 1 : 0, hidden: false});
+            // mark as kept
+            presentOldHosts[h] = true;
+          }
+
+          var newcfg = {_id: rsname, version: version, members: members};
+          print("Applying new config for " + rsname + " version " + version);
+          printjson(newcfg);
+          try { rs.reconfig(newcfg, {force:true}); print("rs.reconfig executed with {force:true}"); } catch (e) { print("rs.reconfig failed: "+e); }
+
+    - name: Write reconfig script to temp file
+      ansible.builtin.copy:
+        dest: /tmp/reconfig_rs.js
+        content: "{{ reconfig_js }}"
+        mode: '0644'
+        group: 'smac'
+
+    - name: Run reconfig against target node
+      ansible.builtin.command:
+        cmd: mongosh --host {{ target_node }} --port {{ mongo_port }} /tmp/reconfig_rs.js
+      register: simulation_mongo_reconfig
+
+    - name: Show output from mongo reconfig attempt
+      ansible.builtin.debug:
+        var: simulation_mongo_reconfig.stdout_lines
+
+    - name: Restart mongod service on all replica set members
+      ansible.builtin.command:
+        cmd: sudo systemctl restart mongod27018
