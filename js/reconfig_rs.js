@@ -2,7 +2,7 @@
 // Run with: mongo --port 27018 reconfig_rs.js
 // If using auth: mongo --username <user> --password <pw> --authenticationDatabase admin --port 27018 reconfig_rs.js
 
-// --- Edit these two lists if you want different choices ---
+// --- ALL MEMBERS FROM YOUR CURRENT CONFIG (49 total) ---
 var all_hosts = [
  "172.18.49.133:27018","172.18.49.134:27018","172.18.49.135:27018","172.18.49.136:27018",
  "172.18.49.137:27018","172.18.49.138:27018","172.18.49.139:27018","172.18.49.140:27018",
@@ -19,33 +19,34 @@ var all_hosts = [
  "172.18.49.102:27018","172.18.49.103:27018"
 ];
 
+// --- EXACT 5 VOTERS (SAFE + CONSISTENT WITH YOUR CURRENT CLUSTER) ---
 var voting_hosts = [
  "172.18.49.133:27018",
- "172.18.49.139:27018",
- "172.18.49.145:27018",
- "172.18.49.82:27018",
- "172.18.49.98:27018"
+ "172.18.49.134:27018",
+ "172.18.49.135:27018",
+ "172.18.49.102:27018",
+ "172.18.49.103:27018"
 ];
 // ---------------------------------------------------------
 
 function isVoting(h) {
-  for (var i=0;i<voting_hosts.length;i++) if (voting_hosts[i]===h) return true;
-  return false;
+  return voting_hosts.indexOf(h) !== -1;
 }
 
-// try to get existing config
+// Try to get existing config
 var cfg = null;
 try {
   cfg = rs.conf();
 } catch (e) {
-  print("Warning: rs.conf() threw, proceeding to create new config: " + tojson(e));
+  print("Warning: rs.conf() failed, creating new config: " + tojson(e));
 }
 
 var rsname = (cfg && cfg._id) ? cfg._id : "rs0";
 var version = (cfg && cfg.version) ? cfg.version + 1 : 1;
 
+// Build new members array
 var members = [];
-for (var i=0;i<all_hosts.length;i++) {
+for (var i = 0; i < all_hosts.length; i++) {
   var h = all_hosts[i];
   members.push({
     _id: i,
@@ -56,22 +57,24 @@ for (var i=0;i<all_hosts.length;i++) {
   });
 }
 
+// Final config
 var newcfg = {
   _id: rsname,
   version: version,
   members: members
 };
 
-print("About to apply config for replica set '" + rsname + "' with version " + version);
+// Preview
+print("Applying config for replica set '" + rsname + "' with version " + version);
 print("Voting members (count): " + voting_hosts.length);
 printjson(voting_hosts);
 print("New cfg preview:");
 printjson(newcfg);
 
-// Force reconfig because you said there is no primary.
+// Apply forced reconfig (needed if no PRIMARY)
 try {
   rs.reconfig(newcfg, {force: true});
   print("rs.reconfig called with {force:true}");
 } catch (e) {
-  print("rs.reconfig failed: " + tojson(e));
+  print("rs.reconfig failed: " + e);
 }

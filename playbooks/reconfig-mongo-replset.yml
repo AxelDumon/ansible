@@ -4,7 +4,7 @@
   gather_facts: false
   vars:
     # the node we will connect to with mongo shell (must be reachable)
-    target_node: "172.18.49.133"
+    target_node: "172.18.49.134"
     mongo_port: 27018
 
     all_hosts:
@@ -63,11 +63,11 @@
     voting_hosts: "{{ selected_hosts[:5] }}"
 
     # voting_hosts:
-    #   - "172.18.49.133:27018"
-    #   - "172.18.49.139:27018"
-    #   - "172.18.49.145:27018"
-    #   - "172.18.49.82:27018"
-    #   - "172.18.49.98:27018"
+      # - "172.18.49.133:27018"
+      # - "172.18.49.134:27018"
+      # - "172.18.49.135:27018"
+      # - "172.18.49.102:27018"
+      # - "172.18.49.103:27018"
 
   tasks:
     - name: Build JS to reconfigure replica set
@@ -88,7 +88,7 @@
           var newcfg = {_id: rsname, version: version, members: members};
           print("Applying new config for " + rsname + " version " + version);
           printjson(newcfg);
-          try { rs.reconfig(newcfg, {force:true}); print("rs.reconfig executed with {force:true}"); } catch (e) { print("rs.reconfig failed: "+tojson(e)); }
+          try { rs.reconfig(newcfg, {force:true}); print("rs.reconfig executed with {force:true}"); } catch (e) { print("rs.reconfig failed: "+e); }
 
     - name: Write reconfig script to temp file
       ansible.builtin.copy:
