@@ -1,0 +1,9 @@
+---
+- name: Simulate MongoDB app
+  hosts: all
+  become: true
+  user: smac
+  gather_facts: true
+  roles:
+    # - role: app
+    - role: simulation

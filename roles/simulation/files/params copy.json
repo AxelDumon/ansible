@@ -1,0 +1,52 @@
+[
+    {
+        "number_of_agents": 3,
+        "delay_between_discoveries": 20,
+        "size_of_the_grid": 1000
+    },
+    {
+        "number_of_agents": 5,
+        "delay_between_discoveries": 20,
+        "size_of_the_grid": 1000
+    },
+    {
+        "number_of_agents": 7,
+        "delay_between_discoveries": 20,
+        "size_of_the_grid": 1000
+    },
+    {
+        "number_of_agents": 10,
+        "delay_between_discoveries": 20,
+        "size_of_the_grid": 1000
+    },
+    {
+        "number_of_agents": 15,
+        "delay_between_discoveries": 20,
+        "size_of_the_grid": 1000
+    },
+    {
+        "number_of_agents": 20,
+        "delay_between_discoveries": 20,
+        "size_of_the_grid": 1000
+    },
+    {
+        "number_of_agents": 25,
+        "delay_between_discoveries": 20,
+        "size_of_the_grid": 1000
+    },
+    {
+        "number_of_agents": 30,
+        "delay_between_discoveries": 20,
+        "size_of_the_grid": 1000
+    },
+    {
+        "number_of_agents": 40,
+        "delay_between_discoveries": 20,
+        "size_of_the_grid": 1000
+    },
+    {
+        "number_of_agents": 49,
+        "delay_between_discoveries": 20,
+        "size_of_the_grid": 1000
+    }
+]

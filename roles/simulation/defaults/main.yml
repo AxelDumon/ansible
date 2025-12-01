@@ -5,5 +5,8 @@ simulation_count: 5
 simulation_name: "default"
 
 # Change if you change db / machines ...
-target_node: "172.18.49.134"
+# target_node: "172.18.49.134"
+target_node: "134.206.154.215"
 mongo_port: 27018
+db_name: "v2grid"
+mongo_replica_set_name: "rs0"

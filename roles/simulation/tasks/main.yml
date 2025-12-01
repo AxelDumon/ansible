@@ -22,7 +22,7 @@
 
 - name: Simulation loop
   ansible.builtin.include_tasks: loop_simulation.yml
-  when: inventory_hostname == groups['exploringAgents'][0]
+  # when: inventory_hostname == groups['exploringAgents'][0]
   loop: "{{ all_sim_params }}"
   loop_control:
     loop_var: simulation_params

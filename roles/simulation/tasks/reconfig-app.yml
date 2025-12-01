@@ -1,0 +1,37 @@
+- name: Build REPL_MONGO_URI
+  ansible.builtin.set_fact:
+    repl_mongo_uri: >-
+      mongodb://{{ all_hosts
+        | join(',') }}/{{ db_name }}?replicaSet={{ mongo_replica_set_name }}
+
+- name: Update the .env file of the server
+  ansible.builtin.lineinfile:
+    path: "/opt/app/server/.env"
+    regexp: '^{{ item.keys() | first }}='
+    line: "{{ item.keys() | first }}={{ item.values() | first }}"
+    create: true
+  loop:
+    - {"SIZE": "{{ simulation_params.size_of_the_grid }}"}
+    - {"DELAY": "{{ simulation_params.delay_between_discoveries }}"}
+    - {"REPL_MONGO_URI": "{{ repl_mongo_uri }}"}
+
+- name: Rebuild application with new .env
+  ansible.builtin.command: >
+    /bin/bash -c "cd /opt/app/server && 
+    npm install && 
+    npm run build"
+  args:
+    chdir: /opt/app/server
+
+- name: Build apps locally
+  tags: app, build, deploy
+  ansible.builtin.command:
+    cmd: npm run build
+    chdir: /opt/app/{{ item }}
+  loop:
+    - public
+    - server
+
+- name: Restart application service
+  ansible.builtin.command:
+    cmd: sudo systemctl restart exploring-agent

@@ -1,23 +1,42 @@
-- name: Debug the number of simulations
-  ansible.builtin.debug:
-    msg: "Starting simulation with {{ repetition_count }} tries"
-
-- name: Debug simulation parameters
-  ansible.builtin.debug:
-    var: simulation_params
-
 - name: Set number of agents to use
   ansible.builtin.set_fact:
     agents_list: "{{ full_agents_list[:simulation_params.number_of_agents] }}"
 
-- name: Update the replica set configuration before starting simulations
-  ansible.builtin.include_tasks: reconfig-mongo-replset.yml
-  vars:
-    agents_list: "{{ agents_list }}"
-    all_hosts: "{{ agents_list | map('regex_replace', '^(.*)$', '\\1:27018') | list }}"
+- name: Set nodes for replica set reconfiguration
+  ansible.builtin.set_fact:
+    all_hosts: "{{ agents_list | map('regex_replace', '(:27018)?$', ':27018') | list }}"
 
-- name: Include run_simulation tasks for each simulation with "repetition_count" repetitions
+- name: Set simulation parameters for the db
+  run_once: true
+  block :
+    - name: Debug the number of simulations
+      ansible.builtin.debug:
+        msg: "Starting simulation with {{ simulation_count }} tries"
+
+    - name: Debug simulation parameters
+      ansible.builtin.debug:
+        var: simulation_params
+
+    - name: Compute voting_hosts from all_hosts
+      ansible.builtin.set_fact:
+        voting_hosts: "{{ all_hosts[:5] }}"
+
+    - name: Update the replica set configuration
+      ansible.builtin.include_tasks: reconfig-mongo-replset.yml
+
+- name: Restart mongod service on all replica set members
+  ansible.builtin.command:
+    cmd: sudo systemctl restart mongod27018
+
+- name: Update the app configuration
+  ansible.builtin.include_tasks: reconfig-app.yml
+  # vars:
+    # agents_list: "{{ agents_list }}"
+    # simulation_params: "{{ simulation_params }}"
+
+- name: Include run_simulation tasks for each simulation with "simulation_count" repetitions
   ansible.builtin.include_tasks: run_simulation.yml
-  loop: "{{ range(1, repetition_count + 1) | list }}"
+  loop: "{{ range(1, simulation_count + 1) | list }}"
   loop_control:
     loop_var: repetition_number
+  run_once: true
