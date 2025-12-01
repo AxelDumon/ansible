@@ -33,7 +33,7 @@
     method: GET
     return_content: true
   register: explore_result
-  retries: 60
+  retries: 120
   delay: 60
   until: explore_result.json.isExploring == false
   loop: "{{ agents_list }}"
