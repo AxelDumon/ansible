@@ -5,9 +5,11 @@
 - name: Set nodes for replica set reconfiguration
   ansible.builtin.set_fact:
     all_hosts: "{{ agents_list | map('regex_replace', '(:27018)?$', ':27018') | list }}"
+  when: ansible_host in agents_list
 
 - name: Set simulation parameters for the db
   run_once: true
+  when: ansible_host in agents_list
   block :
     - name: Debug the number of simulations
       ansible.builtin.debug:
@@ -27,12 +29,14 @@
 - name: Restart mongod service on all replica set members
   ansible.builtin.command:
     cmd: sudo systemctl restart mongod27018
+  when: ansible_host in agents_list
 
 - name: Update the app configuration
   ansible.builtin.include_tasks: reconfig-app.yml
   # vars:
     # agents_list: "{{ agents_list }}"
     # simulation_params: "{{ simulation_params }}"
+  when: ansible_host in agents_list
 
 - name: Include run_simulation tasks for each simulation with "simulation_count" repetitions
   ansible.builtin.include_tasks: run_simulation.yml
@@ -40,3 +44,4 @@
   loop_control:
     loop_var: repetition_number
   run_once: true
+  when: ansible_host in agents_list
