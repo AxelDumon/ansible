@@ -1,0 +1,25 @@
+---
+- name: Stop application services
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Stop application service
+      ansible.builtin.command:
+        cmd: systemctl stop exploring-agent
+      ignore_errors: true
+
+    - name: Stop mongodb service
+      ansible.builtin.command:
+        cmd: systemctl stop mongodb27018
+      ignore_errors: true
+
+    - name: Stop mongodb local service
+      ansible.builtin.command:
+        cmd: systemctl stop mongod
+      ignore_errors: true
+
+    - name: Stop watwhing-services
+      ansible.builtin.command:
+        cmd: systemctl stop watching-services
+      ignore_errors: true

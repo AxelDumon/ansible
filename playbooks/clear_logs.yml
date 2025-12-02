@@ -1,0 +1,9 @@
+---
+- name: Clear mongodb logs
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Clear MongoDB log file
+      ansible.builtin.shell: >
+        truncate -s 0 /var/log/mongodb27018/mongod.log

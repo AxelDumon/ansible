@@ -1,0 +1,29 @@
+---
+- name: Move mongodb logs directory
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Stop mongodb service
+      ansible.builtin.command:
+        cmd: systemctl stop mongodb27018
+
+    - name: Ensure the logs are at the old location
+      ansible.builtin.stat:
+        path: /var/log/mongodb27018
+      register: log_dir_stat
+
+    - name: Move mongodb logs directory to new location
+      ansible.builtin.command:
+        cmd: mv /var/log/mongodb27018 /usr/local/virtual_machine/infoetu/axel.dumon.etu/logs/mongodb27018
+      when: log_dir_stat.stat.exists
+
+    - name: Update mongodb27018.conf to point to new log location
+      ansible.builtin.lineinfile:
+        path: /etc/mongodb27018.conf
+        regexp: '^path: '
+        line: 'path: /usr/local/virtual_machine/infoetu/axel.dumon.etu/logs/mongodb27018/mongod.log'
+
+    - name: Start mongodb service
+      ansible.builtin.command:
+        cmd: systemctl start mongodb27018

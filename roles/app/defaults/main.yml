@@ -1,7 +1,7 @@
 ---
 app_base_port: 3000                  # Explorer(f&b) ;
-app_base_ws_port: 8080               # Explorer(f&b) ;
-app_base_app_port: 8000              # Explorer(f)   ;
+app_base_ws_port: 4860               # Explorer(f&b) ;
+app_base_app_port: 5016              # Explorer(f)   ;
 app_delay: 200                       # Explorer(f&b) ; Watcher(f&b)
 app_size: 40                         # Explorer(f&b) ; Watcher(f&b)
 app_base_mongo_port: 27018           # Explorer(b)   ;
