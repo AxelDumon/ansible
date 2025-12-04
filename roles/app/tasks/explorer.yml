@@ -113,9 +113,9 @@
 - name: Install dependencies locally
   tags: app, build, deploy
   ansible.builtin.command:
-    cmd: npm install
+    cmd: npm install 
     chdir: /opt/app/{{ item }}
-    creates: /opt/app/{{ item }}/node_modules
+    # creates: /opt/app/{{ item }}/node_modules
   loop:
     - public
     - server

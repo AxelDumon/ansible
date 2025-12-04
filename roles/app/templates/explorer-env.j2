@@ -8,6 +8,8 @@ BASE_MONGO_PORT={{ app_env.BASE_MONGO_PORT }}
 DB_NAME={{ app_env.DB_NAME }}
 REPL_MONGO_URI={{ app_env.REPL_MONGO_URI }}
 AGENT_NAME={{ app_env.AGENT_NAME }}
+COUCHDB_USER={{ app_user_couchdb }}
+COUCHDB_PASSWORD={{ app_password_couchdb }}
 # Front environment variables for {{ app_env.AGENT_NAME }}
 VITE_DELAY={{ app_env.DELAY }}
 VITE_SIZE={{ app_env.SIZE }}

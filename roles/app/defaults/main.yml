@@ -9,3 +9,5 @@ app_api_url: "http://localhost:3001" #               ; Watcher(f)
 app_db_name: "v2grid"
 app_mongo_replica_set_name: "rs0"
 app_version: "master"              # Possible versions : mongodb, couchdb, master
+app_user_couchdb: "admin"
+app_password_couchdb: "password"
