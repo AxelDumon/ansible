@@ -61,7 +61,7 @@
         - { question: "couchdb/adminpass", value: "{{ couchdb_admin_password }}", vtype: "password" }
         - { question: "couchdb/adminpass_again", value: "{{ couchdb_admin_password }}", vtype: "password" }
         - { question: "couchdb/cookie", value: "{{ couchdb_erl_cookie }}", vtype: "string" }
-        - { question: "couchdb/nodename", value: "{{ ansible_fqdn }}", vtype: "string" }
+        - { question: "couchdb/nodename", value: "{{ ansible_host }}", vtype: "string" }
 
     - name: Ensure apt cache is up to date
       become: true
@@ -232,6 +232,6 @@
                 "continuous": true
               }
             status_code: 201
-          loop: "{{ db_nodes }}"
+          loop: "{{ db_nodes | difference([ansible_host]) }}"
       when: db_nodes is defined and db_nodes | length > 0
       ignore_errors: true
